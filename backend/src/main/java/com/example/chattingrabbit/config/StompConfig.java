@@ -23,7 +23,13 @@ public class StompConfig implements WebSocketMessageBrokerConfigurer {
         registry.setPathMatcher(new AntPathMatcher(".")); // url을 chat/room/3 -> chat.room.3으로 참조하기 위한 설정
         registry.setApplicationDestinationPrefixes("/app");
 
-        // Simple Broker 사용 (RabbitMQ 대신)
-        registry.enableSimpleBroker("/topic", "/queue");
+        // RabbitMQ를 STOMP 브로커로 사용
+        registry.enableStompBrokerRelay("/topic", "/queue")
+                .setRelayHost("localhost")
+                .setRelayPort(61613) // RabbitMQ STOMP 플러그인 포트
+                .setClientLogin("guest")
+                .setClientPasscode("guest")
+                .setSystemLogin("guest")
+                .setSystemPasscode("guest");
     }
 }

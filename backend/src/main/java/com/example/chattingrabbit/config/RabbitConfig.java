@@ -11,13 +11,15 @@ import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.amqp.rabbit.listener.adapter.MessageListenerAdapter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
 
 @Configuration
 public class RabbitConfig {
 
     private static final String CHAT_QUEUE_NAME = "chat.queue";
     private static final String CHAT_EXCHANGE_NAME = "chat.exchange";
-    private static final String ROUTING_KEY = "cafe.room.*";
+    private static final String ROUTING_KEY = "chat.room.*";
 
     @Bean
     public Queue queue() {
@@ -32,6 +34,11 @@ public class RabbitConfig {
     @Bean
     public Binding binding(Queue queue, TopicExchange exchange) {
         return BindingBuilder.bind(queue).to(exchange).with(ROUTING_KEY);
+    }
+
+    @Bean
+    public MessageConverter jsonMessageConverter() {
+        return new Jackson2JsonMessageConverter();
     }
 
     @Bean
@@ -58,6 +65,7 @@ public class RabbitConfig {
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
         template.setExchange(CHAT_EXCHANGE_NAME);
+        template.setMessageConverter(jsonMessageConverter());
         return template;
     }
 
@@ -68,9 +76,18 @@ public class RabbitConfig {
         container.setQueueNames(CHAT_QUEUE_NAME);
 
         // MessageListenerAdapter에 실제 메시지 핸들러 설정
-        MessageListenerAdapter messageListener = new MessageListenerAdapter(new Object(), "receive");
+        MessageListenerAdapter messageListener = new MessageListenerAdapter(new ChatMessageHandler(), "handleMessage");
+        messageListener.setMessageConverter(jsonMessageConverter());
         container.setMessageListener(messageListener);
 
         return container;
+    }
+
+    // 메시지 핸들러 클래스
+    public static class ChatMessageHandler {
+        public void handleMessage(String message) {
+            // RabbitMQ에서 받은 메시지 처리 로직
+            System.out.println("Received message from RabbitMQ: " + message);
+        }
     }
 }

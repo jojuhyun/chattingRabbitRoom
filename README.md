@@ -1,6 +1,6 @@
 # 🐰 ChattingRabbit - 실시간 채팅 시스템
 
-ChattingRabbit은 Spring Boot와 Vue.js를 기반으로 한 현대적인 실시간 채팅 시스템입니다. H2 데이터베이스를 활용하여 안전하고 효율적인 채팅 환경을 제공합니다.
+ChattingRabbit은 Spring Boot와 Vue.js를 기반으로 한 현대적인 실시간 채팅 시스템입니다. **RabbitMQ를 메시지 브로커로 사용**하여 안전하고 효율적인 채팅 환경을 제공합니다.
 
 ## ✨ 주요 기능
 
@@ -47,6 +47,7 @@ ChattingRabbit은 Spring Boot와 Vue.js를 기반으로 한 현대적인 실시�
 - **Spring WebSocket**: 실시간 통신 지원
 - **Spring Data JPA**: 데이터 영속성 관리
 - **H2 Database**: 인메모리 데이터베이스
+- **RabbitMQ**: 메시지 브로커 (필수)
 - **STOMP**: 메시징 프로토콜
 - **Lombok**: 보일러플레이트 코드 제거
 - **Spring Scheduling**: 자동 정리 작업
@@ -68,15 +69,59 @@ ChattingRabbit은 Spring Boot와 Vue.js를 기반으로 한 현대적인 실시�
 - **Java 17** 이상
 - **Node.js 18** 이상
 - **npm** 또는 **yarn**
+- **RabbitMQ 3.8+** (필수)
 
-### 2. 프로젝트 클론
+### 2. RabbitMQ 설치 및 설정
+
+#### **Windows에서 RabbitMQ 설치**
+
+```bash
+# Chocolatey 사용 (권장)
+choco install erlang
+choco install rabbitmq
+
+# 또는 수동 설치
+# https://www.rabbitmq.com/install-windows.html
+```
+
+#### **RabbitMQ 서비스 시작**
+
+```bash
+# 서비스 시작
+net start RabbitMQ
+
+# 또는 수동 시작
+rabbitmq-server
+```
+
+#### **STOMP 플러그인 활성화**
+
+```bash
+# RabbitMQ 관리 플러그인 활성화
+rabbitmq-plugins enable rabbitmq_management
+
+# STOMP 플러그인 활성화
+rabbitmq-plugins enable rabbitmq_stomp
+
+# RabbitMQ 재시작
+net stop RabbitMQ
+net start RabbitMQ
+```
+
+#### **RabbitMQ 관리 콘솔 접속**
+
+- URL: http://localhost:15672
+- 사용자명: `guest`
+- 비밀번호: `guest`
+
+### 3. 프로젝트 클론
 
 ```bash
 git clone <repository-url>
 cd ChattingRabbit
 ```
 
-### 3. 백엔드 실행
+### 4. 백엔드 실행
 
 ```bash
 cd backend
@@ -90,7 +135,7 @@ cd backend
 gradlew.bat bootRun
 ```
 
-### 4. 프론트엔드 실행
+### 5. 프론트엔드 실행
 
 ```bash
 cd frontend
@@ -98,7 +143,7 @@ npm install
 npm run dev
 ```
 
-### 5. 배치 파일 사용 (Windows)
+### 6. 배치 파일 사용 (Windows)
 
 ```cmd
 # 전체 서비스 시작
@@ -111,11 +156,61 @@ start-backend.bat
 start-frontend.bat
 ```
 
-### 6. 브라우저 접속
+### 7. 브라우저 접속
 
 - **프론트엔드**: http://localhost:3000
 - **백엔드 API**: http://localhost:8080
 - **H2 콘솔**: http://localhost:8080/h2-console
+- **RabbitMQ 관리**: http://localhost:15672
+
+## 🔧 RabbitMQ 서비스 관리
+
+### **서비스 상태 확인**
+
+```cmd
+# Windows 서비스 상태 확인
+sc query RabbitMQ
+
+# RabbitMQ 상태 확인
+rabbitmqctl status
+
+# 플러그인 목록 확인
+rabbitmq-plugins list
+```
+
+### **서비스 시작/중지**
+
+```cmd
+# 서비스 시작
+net start RabbitMQ
+
+# 서비스 중지
+net stop RabbitMQ
+
+# 또는 Windows 서비스 관리자에서 수동으로 제어
+```
+
+### **자동 시작 설정**
+
+```cmd
+# 서비스 자동 시작 설정
+sc config RabbitMQ start= auto
+
+# 서비스 수동 시작 설정
+sc config RabbitMQ start= demand
+```
+
+### **포트 확인**
+
+```cmd
+# 사용 중인 포트 확인
+netstat -an | findstr "5672\|15672\|61613"
+
+# RabbitMQ 기본 포트
+# 5672: AMQP 프로토콜
+# 15672: 관리 콘솔
+# 61613: STOMP 플러그인
+```
 
 ## 📡 API 엔드포인트
 
@@ -146,11 +241,40 @@ start-frontend.bat
 - `DELETE /rooms/{roomId}` - 채팅방 삭제
 - `POST /cleanup` - 자동 정리 실행
 
+### **시스템 상태** (`/api/health`)
+
+- `GET /health` - 전체 시스템 상태 확인
+- `GET /health/rabbitmq` - RabbitMQ 연결 상태 확인
+
 ### **WebSocket** (`/stomp`)
 
-- `/topic/chat/{roomId}` - 채팅 메시지 구독
-- `/topic/participants/{roomId}` - 참여자 목록 업데이트
+- `/topic/chat.{roomId}` - 채팅 메시지 구독
+- `/topic/participants.{roomId}` - 참여자 목록 업데이트
 - `/app/chat.message` - 메시지 전송
+
+## 🐰 RabbitMQ 메시지 흐름
+
+### **메시지 전송 과정**
+
+1. 클라이언트 → WebSocket → StompChatController
+2. StompChatController → RabbitMQMessageService
+3. RabbitMQMessageService → RabbitMQ Exchange
+4. RabbitMQ Exchange → Queue (라우팅 키 기반)
+5. RabbitMQMessageListener → WebSocket → 클라이언트
+
+### **RabbitMQ 구성 요소**
+
+- **Exchange**: `chat.exchange` (Topic Exchange)
+- **Queue**: `chat.queue`
+- **Routing Key**: `chat.room.{roomId}`
+- **STOMP Port**: 61613
+
+### **메시지 타입**
+
+- **ENTER**: 채팅방 입장
+- **MESSAGE**: 일반 메시지
+- **BROADCAST**: 방송 메시지
+- **LEAVE**: 채팅방 퇴장
 
 ## 🗄️ 데이터베이스 스키마
 
@@ -235,7 +359,7 @@ start-frontend.bat
 
 ### 3. **채팅방** (`/rooms/:roomId`)
 
-- 실시간 메시지 송수신
+- 실시간 메시지 송수신 (RabbitMQ 기반)
 - 참여자 목록 및 참여 순서 표시
 - 사용자 초대 기능
 - 채팅방 떠나기 기능 (떠나기 전까지의 모든 메시지 보존)
@@ -277,6 +401,70 @@ npm run dev
 - 사용자명: `sa`
 - 비밀번호: (비어있음)
 
+### **RabbitMQ 확인**
+
+- 관리 콘솔: http://localhost:15672
+- 사용자명: `guest`
+- 비밀번호: `guest`
+- STOMP 포트: 61613
+
+## 🚨 문제 해결
+
+### **RabbitMQ 관련 문제**
+
+#### **1. 서비스 시작 실패**
+
+```cmd
+# 이벤트 뷰어에서 오류 로그 확인
+eventvwr.msc
+
+# RabbitMQ 로그 확인
+# 기본 위치: C:\Users\[사용자명]\AppData\Roaming\RabbitMQ\log
+```
+
+#### **2. 포트 충돌**
+
+```cmd
+# 사용 중인 포트 확인
+netstat -an | findstr "5672\|15672\|61613"
+
+# 충돌하는 프로세스 종료
+taskkill /PID [프로세스ID] /F
+```
+
+#### **3. 연결 실패**
+
+```cmd
+# RabbitMQ 상태 확인
+rabbitmqctl status
+
+# 플러그인 상태 확인
+rabbitmq-plugins list
+
+# 서비스 재시작
+net stop RabbitMQ
+net start RabbitMQ
+```
+
+### **애플리케이션 관련 문제**
+
+#### **1. 헬스체크 API로 상태 확인**
+
+```bash
+# RabbitMQ 상태 확인
+curl http://localhost:8080/api/health/rabbitmq
+
+# 전체 시스템 상태 확인
+curl http://localhost:8080/api/health
+```
+
+#### **2. 로그 확인**
+
+```cmd
+# 애플리케이션 로그 확인
+# 기본 위치: logs/chattingrabbit.log
+```
+
 ## 📝 프로젝트 구조
 
 ```
@@ -285,11 +473,15 @@ ChattingRabbit/
 │   ├── src/main/java/
 │   │   └── com/example/chattingrabbit/
 │   │       ├── config/              # 설정 클래스
+│   │       │   ├── RabbitConfig.java        # RabbitMQ 설정
+│   │       │   ├── StompConfig.java         # STOMP 설정
+│   │       │   └── RabbitMQMessageListener.java # 메시지 리스너
 │   │       ├── controller/          # REST API 컨트롤러
 │   │       ├── dto/                 # 데이터 전송 객체
 │   │       ├── entity/              # JPA 엔티티
 │   │       ├── repository/          # 데이터 접근 계층
 │   │       ├── service/             # 비즈니스 로직
+│   │       │   └── RabbitMQMessageService.java # RabbitMQ 메시지 서비스
 │   │       └── ChattingRabbitApplication.java
 │   ├── src/main/resources/
 │   │   └── application.properties   # 애플리케이션 설정
@@ -298,7 +490,7 @@ ChattingRabbit/
 │   ├── src/
 │   │   ├── components/              # Vue 컴포넌트
 │   │   ├── router/                  # 라우터 설정
-│   │   ├── stores/                  # Pinia 스토어
+│   │   ├── stores/                  # Pinia 상태 관리
 │   │   ├── views/                   # 페이지 뷰
 │   │   ├── App.vue                  # 메인 앱 컴포넌트
 │   │   └── main.js                  # 앱 진입점
@@ -307,7 +499,8 @@ ChattingRabbit/
 ├── start-all.bat                     # 전체 서비스 시작 (Windows)
 ├── start-backend.bat                 # 백엔드 시작 (Windows)
 ├── start-frontend.bat                # 프론트엔드 시작 (Windows)
-└── README.md                         # 프로젝트 문서
+├── README.md                         # 프로젝트 문서
+└── RABBITMQ_SETUP.md                # RabbitMQ 상세 설치 가이드
 ```
 
 ## 🚨 주의사항
@@ -317,12 +510,14 @@ ChattingRabbit/
 - 프로덕션 환경에서는 H2 대신 PostgreSQL, MySQL 등 사용 권장
 - CORS 설정을 실제 도메인으로 제한
 - API 키나 민감한 정보는 환경 변수로 관리
+- RabbitMQ 기본 계정(guest) 변경 권장
 
 ### **성능**
 
 - 대용량 메시지 처리를 위한 페이징 구현 고려
 - Redis를 활용한 세션 관리 고려
 - 메시지 압축 및 최적화 고려
+- RabbitMQ 클러스터링 고려
 
 ### **확장성**
 
@@ -346,6 +541,11 @@ ChattingRabbit/
 
 프로젝트에 대한 문의사항이나 버그 리포트는 이슈를 통해 제출해 주세요.
 
+## 📚 추가 문서
+
+- **[RABBITMQ_SETUP.md](RABBITMQ_SETUP.md)**: RabbitMQ 상세 설치 및 설정 가이드
+- **[README.md](README.md)**: 프로젝트 개요 및 기본 사용법
+
 ---
 
-**ChattingRabbit** - 안전하고 효율적인 실시간 채팅 시스템 🐰✨
+**ChattingRabbit** - RabbitMQ 기반 안전하고 효율적인 실시간 채팅 시스템 🐰✨
