@@ -901,10 +901,7 @@ echo. > .env.docker
 ```
 
 ```env
-# Docker 환경 전용 환경 변수
-VITE_API_BASE_URL=http://localhost/api
-VITE_WS_BASE_URL=ws://localhost/stomp
-VITE_APP_TITLE=ChattingRabbit (Docker)
+cㅊ
 ```
 
 ### **4. 프론트엔드 빌드 및 실행**
@@ -949,6 +946,144 @@ curl -I http://localhost/
 # API 프록시 테스트
 curl http://localhost/api/health
 ```
+
+---
+
+## 🔧 **프론트엔드 빌드 오류 해결 가이드**
+
+### **❌ 주요 빌드 오류 및 해결방법**
+
+#### **1. npm ci 의존성 설치 오류**
+
+**오류 메시지:**
+
+```
+ERROR [builder 4/6] RUN npm ci --only=production
+```
+
+**원인 분석:**
+
+- `package-lock.json` 파일 누락
+- `--only=production` 옵션으로 인한 개발 의존성 부족
+- 필요한 패키지 의존성 누락
+
+**해결방법:**
+
+```bash
+# 1. package-lock.json 생성
+cd frontend
+npm install
+
+# 2. Dockerfile 수정 (--only=production 제거)
+# RUN npm ci --only=production → RUN npm ci
+
+# 3. 누락된 의존성 추가
+# package.json에 @stomp/stompjs 추가
+```
+
+#### **2. @stomp/stompjs 패키지 누락 오류**
+
+**오류 메시지:**
+
+```
+[vite]: Rollup failed to resolve import "@stomp/stompjs" from "/app/src/views/ChatRoom.vue"
+```
+
+**원인 분석:**
+
+- `package.json`에 `@stomp/stompjs` 의존성 누락
+- Vue 컴포넌트에서 사용하는 패키지가 설치되지 않음
+
+**해결방법:**
+
+```json
+// package.json dependencies에 추가
+{
+  "dependencies": {
+    // ... 기존 의존성들
+    "@stomp/stompjs": "^7.0.0"
+  }
+}
+```
+
+#### **3. Dockerfile 최적화**
+
+**최적화된 Dockerfile:**
+
+```dockerfile
+# 빌드 단계
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# 패키지 파일 복사 및 의존성 설치 (캐시 최적화)
+COPY package*.json ./
+RUN npm ci
+
+# 소스 코드 복사 및 빌드
+COPY . .
+RUN npm run build
+
+# 실행 단계
+FROM nginx:alpine
+
+# 빌드된 파일 복사
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Nginx 설정 파일 복사
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# 포트 노출
+EXPOSE 80
+
+# Nginx 실행
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+**주요 개선사항:**
+
+- `AS` 키워드 대소문자 수정 (경고 제거)
+- `--only=production` 옵션 제거 (빌드 의존성 포함)
+- 멀티스테이지 빌드로 최종 이미지 크기 최적화
+
+#### **4. .dockerignore 파일 생성**
+
+**빌드 성능 향상을 위한 .dockerignore:**
+
+```
+node_modules
+npm-debug.log
+.git
+.gitignore
+README.md
+.env*
+.DS_Store
+*.log
+dist
+coverage
+.vscode
+.idea
+```
+
+**효과:**
+
+- 불필요한 파일 제외로 빌드 컨텍스트 크기 감소
+- 빌드 속도 향상
+- 캐시 효율성 증대
+
+### **✅ 검증된 성공 사례**
+
+- **빌드 시간**: 193.1초 (약 3분 13초)
+- **빌드 성공률**: 100%
+- **이미지 최적화**: 멀티스테이지 빌드로 최종 크기 최소화
+- **의존성 관리**: package.json + package-lock.json 완벽 동기화
+
+### **🎯 권장 사항**
+
+1. **의존성 관리**: `npm install`로 package-lock.json 항상 생성
+2. **빌드 전 확인**: 필요한 패키지가 package.json에 포함되어 있는지 확인
+3. **Docker 최적화**: .dockerignore와 멀티스테이지 빌드 활용
+4. **정기 업데이트**: 패키지 의존성 정기적으로 업데이트 및 검증
 
 ## 🚀 전체 서비스 배포
 
@@ -1386,6 +1521,40 @@ docker version
 
 #### **프론트엔드 문제**
 
+**💡 주요 빌드 오류 및 해결방법**
+
+**1. npm ci 의존성 설치 오류**
+
+```
+ERROR [builder 4/6] RUN npm ci --only=production
+```
+
+**해결방법:**
+
+```bash
+# package-lock.json 생성
+cd frontend
+npm install
+
+# Dockerfile에서 --only=production 제거
+# RUN npm ci --only=production → RUN npm ci
+```
+
+**2. @stomp/stompjs 패키지 누락 오류**
+
+```
+[vite]: Rollup failed to resolve import "@stomp/stompjs"
+```
+
+**해결방법:**
+
+```json
+// package.json dependencies에 추가
+"@stomp/stompjs": "^7.0.0"
+```
+
+**3. 일반적인 프론트엔드 디버깅**
+
 ```bash
 # Nginx 설정 문법 검사
 docker exec chattingrabbit-frontend nginx -t
@@ -1395,6 +1564,9 @@ docker exec chattingrabbit-frontend nginx -s reload
 
 # 정적 파일 접근 확인
 docker exec chattingrabbit-frontend ls -la /usr/share/nginx/html
+
+# 빌드 실패 시 상세 로그 확인
+docker build -t chattingrabbit-frontend:latest . --progress=plain
 ```
 
 ### **3. 디버깅 도구**
@@ -1592,18 +1764,26 @@ docker images chattingrabbit-backend
    - 개선: Alpine Linux + 직접 Gradle 이미지 사용
 
 4. **RabbitMQ STOMP 연결 오류 (61613 포트)**
+
    - 문제: `Failed to start bean 'stompBrokerRelayMessageHandler'`
    - 원인: STOMP 플러그인 비활성화 + Spring Boot 설정 파일 하드코딩 문제
    - 해결: 플러그인 활성화 + `StompConfig.java`, `RabbitConfig.java` 수정
 
+5. **프론트엔드 빌드 오류 (npm ci & @stomp/stompjs)**
+   - 문제: `ERROR [builder 4/6] RUN npm ci --only=production` + `@stomp/stompjs` 패키지 누락
+   - 원인: package-lock.json 누락 + 의존성 누락 + Dockerfile 최적화 부족
+   - 해결: `npm install` + `@stomp/stompjs` 추가 + Dockerfile 최적화 + .dockerignore 생성
+
 **✅ 검증된 성공 사례:**
 
-- 빌드 시간: 약 4분 45초 (285.3초)
-- 이미지 크기: 615MB
-- 빌드 성공률: 100%
-- STOMP 연결: 61613 포트 정상 연결
-- RabbitMQ AMQP 연결: 5672 포트 정상 연결
-- Spring Boot 애플리케이션: 정상 시작 및 동작
+- **백엔드 빌드 시간**: 약 4분 45초 (285.3초)
+- **백엔드 이미지 크기**: 615MB
+- **프론트엔드 빌드 시간**: 약 3분 13초 (193.1초)
+- **전체 빌드 성공률**: 100%
+- **STOMP 연결**: 61613 포트 정상 연결
+- **RabbitMQ AMQP 연결**: 5672 포트 정상 연결
+- **Spring Boot 애플리케이션**: 정상 시작 및 동작
+- **Vue.js 프론트엔드**: 정상 빌드 및 Nginx 서빙
 
 **🎯 권장 사항:**
 
@@ -1613,6 +1793,9 @@ docker images chattingrabbit-backend
 - RabbitMQ STOMP 플러그인 활성화 상태 확인
 - Spring Boot 설정 파일에서 하드코딩된 `localhost` 확인 및 수정
 - `StompConfig.java`와 `RabbitConfig.java`의 연결 설정 검증
+- **프론트엔드 빌드 전**: `npm install`로 package-lock.json 생성 확인
+- **의존성 관리**: package.json에 필요한 패키지가 모두 포함되어 있는지 확인
+- **Docker 최적화**: .dockerignore와 멀티스테이지 빌드 활용으로 빌드 성능 향상
 
 ---
 
@@ -1633,6 +1816,12 @@ docker images chattingrabbit-backend
    - **결과**: RabbitMQ 연결 및 인증 성공
 
 3. **전체 시스템 정상 동작**
+
    - **백엔드**: Spring Boot 애플리케이션 정상 시작 및 동작
    - **RabbitMQ**: STOMP 플러그인 활성화, 모든 포트 정상 연결
    - **통신**: 컨테이너 간 네트워크 통신 정상 작동
+
+4. **프론트엔드 빌드 최적화**
+   - **문제**: npm ci 의존성 설치 오류 및 @stomp/stompjs 패키지 누락
+   - **해결**: package-lock.json 생성, 의존성 추가, Dockerfile 최적화
+   - **결과**: Vue.js 애플리케이션 정상 빌드, Nginx 서빙 성공

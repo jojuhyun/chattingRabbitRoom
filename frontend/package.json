@@ -15,7 +15,8 @@
     "element-plus": "^2.4.0",
     "axios": "^1.6.0",
     "sockjs-client": "^1.6.1",
-    "webstomp-client": "^1.2.6"
+    "webstomp-client": "^1.2.6",
+    "@stomp/stompjs": "^7.0.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.5.0",
