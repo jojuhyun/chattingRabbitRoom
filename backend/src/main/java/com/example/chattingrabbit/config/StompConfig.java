@@ -25,11 +25,11 @@ public class StompConfig implements WebSocketMessageBrokerConfigurer {
 
         // RabbitMQ를 STOMP 브로커로 사용
         registry.enableStompBrokerRelay("/topic", "/queue")
-                .setRelayHost("localhost")
+                .setRelayHost("host.docker.internal")
                 .setRelayPort(61613) // RabbitMQ STOMP 플러그인 포트
-                .setClientLogin("guest")
-                .setClientPasscode("guest")
-                .setSystemLogin("guest")
-                .setSystemPasscode("guest");
+                .setClientLogin("admin")
+                .setClientPasscode("admin123")
+                .setSystemLogin("admin")
+                .setSystemPasscode("admin123");
     }
 }

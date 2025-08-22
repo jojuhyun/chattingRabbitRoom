@@ -44,10 +44,10 @@ public class RabbitConfig {
     @Bean
     public ConnectionFactory connectionFactory() {
         CachingConnectionFactory factory = new CachingConnectionFactory();
-        factory.setHost("localhost");
+        factory.setHost("host.docker.internal");
         factory.setPort(5672);
-        factory.setUsername("guest");
-        factory.setPassword("guest");
+        factory.setUsername("admin");
+        factory.setPassword("admin123");
 
         // RabbitMQ 4.1.3 호환 설정
         factory.setConnectionTimeout(30000); // 30초

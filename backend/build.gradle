@@ -16,6 +16,9 @@ configurations {
 
 repositories {
     mavenCentral()
+    // 네트워크 문제 시 대체 저장소 추가
+    maven { url 'https://repo1.maven.org/maven2/' }
+    maven { url 'https://plugins.gradle.org/m2/' }
 }
 
 dependencies {
@@ -27,6 +30,9 @@ dependencies {
     
     // RabbitMQ Support
     implementation 'org.springframework.boot:spring-boot-starter-amqp'
+    
+    // Reactor Netty for WebSocket STOMP
+    implementation 'io.projectreactor.netty:reactor-netty'
     
     // H2 Database
     runtimeOnly 'com.h2database:h2'
@@ -44,4 +50,17 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+// Gradle 빌드 설정
+gradle.projectsEvaluated {
+    tasks.withType(JavaCompile) {
+        options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+    }
+}
+
+// 빌드 성능 최적화
+tasks.withType(JavaCompile) {
+    options.fork = true
+    options.incremental = true
 }

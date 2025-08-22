@@ -73,6 +73,8 @@ ChattingRabbit은 Spring Boot와 Vue.js를 기반으로 한 현대적인 실시�
 
 ### 2. RabbitMQ 설치 및 설정
 
+**⚠️ 중요**: RabbitMQ는 이 프로젝트의 필수 구성요소입니다. 메시지 전달을 위해 반드시 설치해야 합니다.
+
 #### **Windows에서 RabbitMQ 설치**
 
 ```bash
@@ -100,7 +102,7 @@ rabbitmq-server
 # RabbitMQ 관리 플러그인 활성화
 rabbitmq-plugins enable rabbitmq_management
 
-# STOMP 플러그인 활성화
+# STOMP 플러그인 활성화 (WebSocket 통신을 위해 필수)
 rabbitmq-plugins enable rabbitmq_stomp
 
 # RabbitMQ 재시작
@@ -110,9 +112,22 @@ net start RabbitMQ
 
 #### **RabbitMQ 관리 콘솔 접속**
 
-- URL: http://localhost:15672
-- 사용자명: `guest`
-- 비밀번호: `guest`
+- **URL**: http://localhost:15672
+- **사용자명**: `guest`
+- **비밀번호**: `guest`
+
+#### **RabbitMQ 연결 테스트**
+
+```bash
+# RabbitMQ 상태 확인
+rabbitmqctl status
+
+# 플러그인 목록 확인
+rabbitmq-plugins list
+
+# 연결 테스트 (포트 확인)
+netstat -an | findstr "5672\|15672\|61613"
+```
 
 ### 3. 프로젝트 클론
 
@@ -124,6 +139,7 @@ cd ChattingRabbit
 ### 4. 백엔드 실행
 
 ```bash
+# 백엔드 디렉토리로 이동 (중요!)
 cd backend
 ./gradlew bootRun
 ```
@@ -131,6 +147,7 @@ cd backend
 또는 Windows에서:
 
 ```cmd
+# 백엔드 디렉토리로 이동 (중요!)
 cd backend
 gradlew.bat bootRun
 ```
@@ -138,6 +155,7 @@ gradlew.bat bootRun
 ### 5. 프론트엔드 실행
 
 ```bash
+# 프론트엔드 디렉토리로 이동 (중요!)
 cd frontend
 npm install
 npm run dev
@@ -463,6 +481,97 @@ curl http://localhost:8080/api/health
 ```cmd
 # 애플리케이션 로그 확인
 # 기본 위치: logs/chattingrabbit.log
+
+# 백엔드 로그 확인 (Gradle 실행 시)
+# 콘솔에 출력되는 로그 확인
+
+# 프론트엔드 로그 확인 (브라우저 개발자 도구)
+# Console 탭에서 오류 메시지 확인
+```
+
+## 🔧 문제 해결
+
+### **일반적인 문제들**
+
+#### **1. RabbitMQ 연결 실패**
+
+```cmd
+# RabbitMQ 서비스 상태 확인
+sc query RabbitMQ
+
+# 포트 사용 확인
+netstat -an | findstr "5672"
+
+# RabbitMQ 재시작
+net stop RabbitMQ
+net start RabbitMQ
+```
+
+#### **2. 백엔드 실행 실패**
+
+```cmd
+# Java 버전 확인
+java -version
+
+# 포트 충돌 확인
+netstat -an | findstr "8080"
+
+# Gradle 캐시 정리
+cd backend
+gradlew.bat clean
+```
+
+#### **3. 프론트엔드 실행 실패**
+
+```cmd
+# Node.js 버전 확인
+node --version
+
+# 의존성 재설치
+cd frontend
+rm -rf node_modules
+npm install
+
+# 포트 충돌 확인
+netstat -an | findstr "3000"
+```
+
+#### **4. WebSocket 연결 실패**
+
+```cmd
+# STOMP 플러그인 활성화 확인
+rabbitmq-plugins list | findstr stomp
+
+# 브라우저 개발자 도구에서 네트워크 탭 확인
+# WebSocket 연결 상태 확인
+```
+
+### **로그 분석**
+
+#### **백엔드 로그 패턴**
+
+```bash
+# 성공적인 RabbitMQ 연결
+INFO  - RabbitMQ 연결 성공
+
+# WebSocket 연결 성공
+INFO  - STOMP 엔드포인트 등록됨
+
+# 채팅 메시지 처리
+INFO  - 메시지 전송됨: [사용자명] [메시지]
+```
+
+#### **프론트엔드 로그 패턴**
+
+```javascript
+// WebSocket 연결 성공
+WebSocket 연결됨
+
+// STOMP 연결 성공
+STOMP 클라이언트 연결됨
+
+// 메시지 수신
+메시지 수신됨: [사용자명] [메시지]
 ```
 
 ## 📝 프로젝트 구조

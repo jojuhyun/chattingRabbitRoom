@@ -18,7 +18,7 @@ ChattingRabbit 프로젝트의 백엔드와 프론트엔드를 서버에 배포�
 #### **빌드 및 배포 과정**
 
 ```bash
-# 백엔드 빌드
+# 백엔드 빌드 (중요: backend 폴더로 이동)
 cd backend
 ./gradlew clean build -x test
 
@@ -80,7 +80,26 @@ sudo systemctl restart chattingrabbit
 
 ### **2. Docker 컨테이너 배포**
 
-#### **Dockerfile 생성**
+#### **backend/Dockerfile 파일 생성**
+
+**중요**: `backend/` 폴더 안에 `Dockerfile` 파일을 생성해야 합니다. 확장자는 없습니다.
+
+**파일 생성 방법:**
+
+```bash
+# backend 폴더로 이동
+cd backend
+
+# Dockerfile 생성 (확장자 없음)
+# Windows에서:
+echo. > Dockerfile
+
+# 또는 텍스트 에디터에서 새 파일로 저장할 때:
+# 파일명: Dockerfile (확장자 없음)
+# 파일 형식: 모든 파일 (*.*)
+```
+
+**Dockerfile 내용:**
 
 ```dockerfile
 # backend/Dockerfile
@@ -103,6 +122,25 @@ ENTRYPOINT ["java", "-Xms512m", "-Xmx2g", "-XX:+UseG1GC", "-jar", "app.jar"]
 ```
 
 #### **Docker Compose 설정**
+
+#### **docker-compose.yml 파일 생성**
+
+**중요**: 프로젝트 루트 디렉토리에 `docker-compose.yml` 파일을 생성해야 합니다. 확장자는 `.yml`입니다.
+
+**파일 생성 방법:**
+
+```bash
+# 프로젝트 루트 디렉토리로 이동
+cd chattingRabbitRoom
+
+# docker-compose.yml 파일 생성
+# Windows에서:
+echo. > docker-compose.yml
+
+# 또는 텍스트 에디터에서 새 파일로 저장할 때:
+# 파일명: docker-compose.yml
+# 파일 형식: 모든 파일 (*.*)
+```
 
 ```yaml
 # docker-compose.yml
@@ -244,7 +282,26 @@ sudo systemctl status nginx
 
 ### **2. Docker 컨테이너 배포**
 
-#### **Dockerfile 생성**
+#### **frontend/Dockerfile 파일 생성**
+
+**중요**: `frontend/` 폴더 안에 `Dockerfile` 파일을 생성해야 합니다. 확장자는 없습니다.
+
+**파일 생성 방법:**
+
+```bash
+# frontend 폴더로 이동
+cd frontend
+
+# Dockerfile 생성 (확장자 없음)
+# Windows에서:
+echo. > Dockerfile
+
+# 또는 텍스트 에디터에서 새 파일로 저장할 때:
+# 파일명: Dockerfile (확장자 없음)
+# 파일 형식: 모든 파일 (*.*)
+```
+
+**Dockerfile 내용:**
 
 ```dockerfile
 # frontend/Dockerfile
@@ -265,7 +322,24 @@ EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
 ```
 
-#### **Nginx 설정 파일**
+#### **frontend/nginx.conf 파일 생성**
+
+**중요**: `frontend/` 폴더 안에 `nginx.conf` 파일을 생성해야 합니다. 확장자는 `.conf`입니다.
+
+**파일 생성 방법:**
+
+```bash
+# frontend 폴더로 이동
+cd frontend
+
+# nginx.conf 파일 생성
+# Windows에서:
+echo. > nginx.conf
+
+# 또는 텍스트 에디터에서 새 파일로 저장할 때:
+# 파일명: nginx.conf
+# 파일 형식: 모든 파일 (*.*)
+```
 
 ```nginx
 # frontend/nginx.conf
@@ -311,7 +385,24 @@ http {
 
 ### **1. 환경별 프로파일 설정**
 
-#### **application-prod.properties**
+#### **backend/src/main/resources/application-prod.properties 파일 생성**
+
+**중요**: `backend/src/main/resources/` 폴더 안에 `application-prod.properties` 파일을 생성해야 합니다. 확장자는 `.properties`입니다.
+
+**파일 생성 방법:**
+
+```bash
+# backend/src/main/resources 폴더로 이동
+cd backend/src/main/resources
+
+# application-prod.properties 파일 생성
+# Windows에서:
+echo. > application-prod.properties
+
+# 또는 텍스트 에디터에서 새 파일로 저장할 때:
+# 파일명: application-prod.properties
+# 파일 형식: 모든 파일 (*.*)
+```
 
 ```properties
 # backend/src/main/resources/application-prod.properties
@@ -380,13 +471,13 @@ set -e
 
 echo "🚀 ChattingRabbit 배포 시작..."
 
-# 1. 백엔드 빌드
+# 1. 백엔드 빌드 (중요: backend 폴더로 이동)
 echo "📦 백엔드 빌드 중..."
 cd backend
 ./gradlew clean build -x test
 cd ..
 
-# 2. 프론트엔드 빌드
+# 2. 프론트엔드 빌드 (중요: frontend 폴더로 이동)
 echo "🌐 프론트엔드 빌드 중..."
 cd frontend
 npm ci
@@ -461,13 +552,13 @@ REM deploy.bat
 
 echo 🚀 ChattingRabbit 배포 시작...
 
-REM 1. 백엔드 빌드
+REM 1. 백엔드 빌드 (중요: backend 폴더로 이동)
 echo 📦 백엔드 빌드 중...
 cd backend
 gradlew.bat clean build -x test
 cd ..
 
-REM 2. 프론트엔드 빌드
+REM 2. 프론트엔드 빌드 (중요: frontend 폴더로 이동)
 echo 🌐 프론트엔드 빌드 중...
 cd frontend
 npm ci
@@ -480,6 +571,31 @@ echo 📤 서버에 파일을 업로드하고 서비스를 재시작하세요.
 pause
 ```
 
+## 📋 배포 전 체크리스트
+
+### **환경 준비 확인**
+
+- [ ] **서버 환경**: Java 17, Node.js 18, Nginx 설치
+- [ ] **데이터베이스**: PostgreSQL/MySQL 설치 및 설정
+- [ ] **RabbitMQ**: 서버에 RabbitMQ 설치 및 설정
+- [ ] **방화벽**: 필요한 포트(80, 443, 8080, 5672, 15672) 개방
+- [ ] **SSL 인증서**: HTTPS 적용을 위한 인증서 준비
+- [ ] **백업 전략**: 데이터 및 설정 파일 백업 계획
+
+### **코드 품질 확인**
+
+- [ ] **테스트 통과**: 모든 단위 테스트 및 통합 테스트 통과
+- [ ] **코드 리뷰**: 주요 변경사항에 대한 코드 리뷰 완료
+- [ ] **보안 검사**: 보안 취약점 스캔 및 수정
+- [ ] **성능 테스트**: 부하 테스트 및 성능 최적화 완료
+
+### **배포 환경 설정**
+
+- [ ] **환경 변수**: 프로덕션 환경 변수 설정 파일 준비
+- [ ] **설정 파일**: application-prod.properties, nginx.conf 등 준비
+- [ ] **모니터링**: 로그 수집 및 모니터링 도구 설정
+- [ ] **알림 설정**: 장애 상황 알림 설정
+
 ## 🚨 배포 시 주의사항
 
 ### **1. 보안**
@@ -488,6 +604,9 @@ pause
 - ✅ **방화벽 설정**: 필요한 포트만 개방
 - ✅ **SSL/TLS 적용**: HTTPS 적용 권장
 - ✅ **환경 변수 관리**: 민감한 정보는 환경 변수로
+- ✅ **데이터베이스 보안**: 강력한 비밀번호 및 접근 제한
+- ✅ **API 보안**: Rate Limiting 및 인증/인가 적용
+- ✅ **로깅 보안**: 민감한 정보 로깅 제외
 
 **보안 체크리스트:**
 
@@ -528,6 +647,9 @@ pg_stat_statements (PostgreSQL)
 - ✅ **메트릭 수집**: Prometheus + Grafana 고려
 - ✅ **알림 설정**: 장애 상황 알림
 - ✅ **백업 전략**: 데이터 및 설정 백업
+- ✅ **헬스체크**: 애플리케이션 및 서비스 상태 모니터링
+- ✅ **성능 모니터링**: 응답 시간, 처리량, 리소스 사용량
+- ✅ **비즈니스 메트릭**: 사용자 수, 메시지 수, 채팅방 수
 
 **모니터링 설정:**
 

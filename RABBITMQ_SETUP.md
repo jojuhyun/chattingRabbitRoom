@@ -101,9 +101,25 @@ net start RabbitMQ
 # 서비스 상태 확인
 sc query RabbitMQ
 
-# 플러그인 상태 확인
+# RabbitMQ 상태 확인
+rabbitmqctl status
+
+# 플러그인 목록 확인
 rabbitmq-plugins list
+
+# 포트 리스닝 확인
+netstat -an | findstr "5672\|15672\|61613"
 ```
+
+# 서비스 상태 확인
+
+sc query RabbitMQ
+
+# 플러그인 상태 확인
+
+rabbitmq-plugins list
+
+````
 
 ## 🌐 5단계: RabbitMQ 관리 콘솔 접속
 
@@ -135,7 +151,7 @@ rabbitmqctl set_user_tags admin administrator
 
 # 모든 권한 부여
 rabbitmqctl set_permissions -p / admin ".*" ".*" ".*"
-```
+````
 
 ### **guest 계정 비활성화 (프로덕션 환경 권장)**
 
@@ -169,6 +185,7 @@ ChattingRabbit 애플리케이션 시작 시 자동으로 다음 항목들이 �
 ### **애플리케이션 시작**
 
 ```cmd
+# 백엔드 디렉토리로 이동 (중요!)
 cd backend
 gradlew.bat bootRun
 ```
@@ -192,6 +209,79 @@ curl http://localhost:8080/api/health
   "message": "RabbitMQ 연결 정상",
   "timestamp": 1703123456789
 }
+```
+
+## 🧪 설치 후 테스트
+
+### **1. 기본 연결 테스트**
+
+```cmd
+# RabbitMQ 상태 확인
+rabbitmqctl status
+
+# 응답 예시:
+# Status of node rabbit@[호스트명] ...
+# [{pid,1234},
+#  {running_applications,[{rabbit,"RabbitMQ","3.12.0"}]},
+#  {os,{win32,nt}},
+#  {erlang_version,"Erlang/OTP 24 [erts-12.0]"},
+#  {memory,[{total,12345678},...]},
+#  {alarms,[]},
+#  {listeners,[{clustering,25672,"::"},{amqp,5672,"::"}]}]
+```
+
+### **2. 플러그인 테스트**
+
+```cmd
+# 활성화된 플러그인 확인
+rabbitmq-plugins list
+
+# 필수 플러그인 확인:
+# [E*] rabbitmq_management    3.12.0
+# [E*] rabbitmq_stomp        3.12.0
+# [E*] rabbitmq_web_dispatch 3.12.0
+```
+
+### **3. 관리 콘솔 테스트**
+
+```cmd
+# 브라우저에서 접속
+# http://localhost:15672
+
+# 로그인 정보:
+# 사용자명: guest
+# 비밀번호: guest
+
+# 확인할 항목:
+# - Overview 탭에서 시스템 상태
+# - Connections 탭에서 연결 상태
+# - Exchanges 탭에서 교환소 목록
+# - Queues 탭에서 큐 목록
+```
+
+### **4. 포트 연결 테스트**
+
+```cmd
+# Telnet으로 포트 연결 테스트
+telnet localhost 5672   # AMQP 프로토콜
+telnet localhost 15672  # 관리 콘솔
+telnet localhost 61613  # STOMP 프로토콜
+
+# 또는 PowerShell로 테스트
+Test-NetConnection -ComputerName localhost -Port 5672
+Test-NetConnection -ComputerName localhost -Port 15672
+Test-NetConnection -ComputerName localhost -Port 61613
+```
+
+### **5. ChattingRabbit 연동 테스트**
+
+```cmd
+# 백엔드 애플리케이션 시작 후
+# 헬스체크 API 호출
+curl http://localhost:8080/api/health/rabbitmq
+
+# 성공 응답 예시:
+# {"status":"UP","rabbitmq":"connected"}
 ```
 
 ## 🚨 문제 해결
