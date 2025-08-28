@@ -14,6 +14,9 @@ RUN npm run build
 # 실행 단계
 FROM nginx:alpine
 
+# 헬스체크를 위한 wget 설치
+RUN apk add --no-cache wget
+
 # 빌드된 파일 복사
 COPY --from=builder /app/dist /usr/share/nginx/html
 

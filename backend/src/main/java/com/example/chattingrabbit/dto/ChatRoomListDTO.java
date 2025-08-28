@@ -25,7 +25,7 @@ public class ChatRoomListDTO {
         private String name;
         private String roomType;
         private String creatorNickname;
-        private LocalDateTime regDate;
+        private String regDate;
         private Long participantCount;
         private boolean isParticipating;
     }

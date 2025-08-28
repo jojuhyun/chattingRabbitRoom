@@ -13,6 +13,9 @@ RUN gradle clean build -x test --no-daemon
 # 실행 스테이지
 FROM openjdk:17-jdk-alpine
 
+# 헬스체크를 위한 wget 설치
+RUN apk add --no-cache wget
+
 WORKDIR /app
 
 # JAR 파일 복사

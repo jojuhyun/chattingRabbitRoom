@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '../stores/user'
+import Welcome from '../views/Welcome.vue'
 import NicknameRegister from '../views/NicknameRegister.vue'
+import NicknameLogin from '../views/NicknameLogin.vue'
 import ChatRooms from '../views/ChatRooms.vue'
 import ChatRoom from '../views/ChatRoom.vue'
 import UserProfile from '../views/UserProfile.vue'
@@ -9,12 +11,20 @@ import AdminRooms from '../views/AdminRooms.vue'
 const routes = [
   {
     path: '/',
-    redirect: '/nickname-register'
+    name: 'Welcome',
+    component: Welcome,
+    meta: { requiresAuth: false }
   },
   {
     path: '/nickname-register',
     name: 'NicknameRegister',
     component: NicknameRegister,
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/nickname-login',
+    name: 'NicknameLogin',
+    component: NicknameLogin,
     meta: { requiresAuth: false }
   },
   {
@@ -24,7 +34,7 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/rooms/:roomId',
+    path: '/room',
     name: 'ChatRoom',
     component: ChatRoom,
     meta: { requiresAuth: true }
@@ -64,8 +74,8 @@ router.beforeEach(async (to, from, next) => {
     return
   }
   
-  // 이미 로그인된 사용자가 닉네임 등록 페이지에 접근하는 경우
-  if (to.name === 'NicknameRegister' && userStore.checkSession()) {
+  // 이미 로그인된 사용자가 인증 페이지에 접근하는 경우
+  if ((to.name === 'NicknameRegister' || to.name === 'NicknameLogin') && userStore.checkSession()) {
     next('/rooms')
     return
   }

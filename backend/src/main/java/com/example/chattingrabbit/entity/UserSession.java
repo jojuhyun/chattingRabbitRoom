@@ -37,6 +37,9 @@ public class UserSession {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
 
+    @Column(name = "password", nullable = false)
+    private String password;
+
     @PrePersist
     protected void onCreate() {
         lastUpdate = LocalDateTime.now();

@@ -9,12 +9,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class UserSessionDTO {
+public class LoginRequestDTO {
 
     private String nickname;
-    private String userSession;
-    private String message;
-    private boolean success;
-    private String introduction;
-    private Boolean isSuperAdmin;
+    private String password;
 }

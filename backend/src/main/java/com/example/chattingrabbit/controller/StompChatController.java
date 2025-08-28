@@ -12,6 +12,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.concurrent.CompletableFuture;
 
 @Controller
 @RequiredArgsConstructor
@@ -20,74 +22,132 @@ public class StompChatController {
 
     private final ChatService chatService;
     private final RabbitMQMessageService rabbitMQMessageService;
+    
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @MessageMapping("/chat.enter.{roomId}")
     public void enterRoom(@Payload ChatDTO chat, @PathVariable String roomId) {
-        log.info("채팅방 입장: {}", chat);
+        log.info("채팅방 입장: roomId={}, userId={}, nickname={}", roomId, chat.getUserId(), chat.getNickname());
 
-        // 입장 시간 설정
-        chat.setRegDate(LocalDateTime.now());
-        chat.setMessageType("ENTER");
-        chat.setChatRoomId(roomId);
+        try {
+            // 비동기로 처리하여 WebSocket 블로킹 방지
+            CompletableFuture.runAsync(() -> {
+                try {
+                    // 입장 시간 설정 (String으로 변환하여 직렬화 문제 방지)
+                    String currentTime = LocalDateTime.now().format(FORMATTER);
+                    chat.setRegDate(currentTime);
+                    chat.setMessageType("ENTER");
+                    chat.setChatRoomId(roomId);
 
-        // 사용자 입장 처리
-        chatService.enterChatRoom(roomId, chat.getUserId(), chat.getNickname());
+                    // 사용자 입장 처리
+                    chatService.enterChatRoom(roomId, chat.getUserId(), chat.getNickname());
 
-        // 메시지 저장
-        chatService.saveMessage(chat);
+                    // 메시지 저장
+                    chatService.saveMessage(chat);
 
-        // RabbitMQ를 통해 메시지 전송
-        rabbitMQMessageService.sendEnterMessage(roomId, chat);
+                    // RabbitMQ를 통해 메시지 전송
+                    rabbitMQMessageService.sendEnterMessage(roomId, chat);
+                    
+                    log.info("채팅방 입장 처리 완료: roomId={}, userId={}", roomId, chat.getUserId());
+                } catch (Exception e) {
+                    log.error("채팅방 입장 처리 중 오류 발생: roomId={}, userId={}, error={}", roomId, chat.getUserId(), e.getMessage(), e);
+                }
+            });
+        } catch (Exception e) {
+            log.error("채팅방 입장 메시지 처리 실패: roomId={}, error={}", roomId, e.getMessage(), e);
+        }
     }
 
     @MessageMapping("/chat.message.{roomId}")
     public void sendMessage(@Payload ChatDTO chat, @PathVariable String roomId) {
-        log.info("메시지 전송: {}", chat);
+        log.info("메시지 전송: roomId={}, userId={}, message={}", roomId, chat.getUserId(), chat.getMessage());
 
-        // 전송 시간 설정
-        chat.setRegDate(LocalDateTime.now());
-        chat.setMessageType("MESSAGE");
-        chat.setChatRoomId(roomId);
+        try {
+            // 비동기로 처리하여 WebSocket 블로킹 방지
+            CompletableFuture.runAsync(() -> {
+                try {
+                    // 전송 시간 설정 (String으로 변환하여 직렬화 문제 방지)
+                    String currentTime = LocalDateTime.now().format(FORMATTER);
+                    chat.setRegDate(currentTime);
+                    chat.setMessageType("MESSAGE");
+                    chat.setChatRoomId(roomId);
 
-        // 메시지 저장
-        chatService.saveMessage(chat);
+                    // 메시지 저장
+                    chatService.saveMessage(chat);
 
-        // RabbitMQ를 통해 메시지 전송
-        rabbitMQMessageService.sendChatMessage(roomId, chat);
+                    // RabbitMQ를 통해 메시지 전송
+                    rabbitMQMessageService.sendChatMessage(roomId, chat);
+                    
+                    log.info("메시지 전송 처리 완료: roomId={}, userId={}", roomId, chat.getUserId());
+                } catch (Exception e) {
+                    log.error("메시지 전송 처리 중 오류 발생: roomId={}, userId={}, error={}", roomId, chat.getUserId(), e.getMessage(), e);
+                }
+            });
+        } catch (Exception e) {
+            log.error("메시지 전송 메시지 처리 실패: roomId={}, error={}", roomId, e.getMessage(), e);
+        }
     }
 
     @MessageMapping("/chat.messageall.{roomId}")
     public void sendBroadcast(@Payload ChatDTO chat, @PathVariable String roomId) {
-        log.info("방송 메시지: {}", chat);
+        log.info("방송 메시지: roomId={}, userId={}, message={}", roomId, chat.getUserId(), chat.getMessage());
 
-        // 전송 시간 설정
-        chat.setRegDate(LocalDateTime.now());
-        chat.setMessageType("BROADCAST");
-        chat.setChatRoomId(roomId);
+        try {
+            // 비동기로 처리하여 WebSocket 블로킹 방지
+            CompletableFuture.runAsync(() -> {
+                try {
+                    // 전송 시간 설정 (String으로 변환하여 직렬화 문제 방지)
+                    String currentTime = LocalDateTime.now().format(FORMATTER);
+                    chat.setRegDate(currentTime);
+                    chat.setMessageType("BROADCAST");
+                    chat.setChatRoomId(roomId);
 
-        // 메시지 저장
-        chatService.saveMessage(chat);
+                    // 메시지 저장
+                    chatService.saveMessage(chat);
 
-        // RabbitMQ를 통해 메시지 전송
-        rabbitMQMessageService.sendBroadcastMessage(roomId, chat);
+                    // RabbitMQ를 통해 메시지 전송
+                    rabbitMQMessageService.sendBroadcastMessage(roomId, chat);
+                    
+                    log.info("방송 메시지 처리 완료: roomId={}, userId={}", roomId, chat.getUserId());
+                } catch (Exception e) {
+                    log.error("방송 메시지 처리 중 오류 발생: roomId={}, userId={}, error={}", roomId, chat.getUserId(), e.getMessage(), e);
+                }
+            });
+        } catch (Exception e) {
+            log.error("방송 메시지 처리 실패: roomId={}, error={}", roomId, e.getMessage(), e);
+        }
     }
 
     @MessageMapping("/chat.leave.{roomId}")
     public void leaveRoom(@Payload ChatDTO chat, @PathVariable String roomId) {
-        log.info("채팅방 퇴장: {}", chat);
+        log.info("채팅방 퇴장: roomId={}, userId={}, nickname={}", roomId, chat.getUserId(), chat.getNickname());
 
-        // 퇴장 시간 설정
-        chat.setRegDate(LocalDateTime.now());
-        chat.setMessageType("LEAVE");
-        chat.setChatRoomId(roomId);
+        try {
+            // 비동기로 처리하여 WebSocket 블로킹 방지
+            CompletableFuture.runAsync(() -> {
+                try {
+                    // 퇴장 시간 설정 (String으로 변환하여 직렬화 문제 방지)
+                    String currentTime = LocalDateTime.now().format(FORMATTER);
+                    chat.setRegDate(currentTime);
+                    chat.setMessageType("LEAVE");
+                    chat.setChatRoomId(roomId);
 
-        // 사용자 퇴장 처리
-        chatService.leaveChatRoom(roomId, chat.getUserId());
+                    // 사용자 퇴장 처리
+                    chatService.leaveChatRoom(roomId, chat.getUserId());
 
-        // 메시지 저장
-        chatService.saveMessage(chat);
+                    // 메시지 저장
+                    chatService.saveMessage(chat);
 
-        // RabbitMQ를 통해 메시지 전송
-        rabbitMQMessageService.sendLeaveMessage(roomId, chat);
+                    // RabbitMQ를 통해 메시지 전송
+                    rabbitMQMessageService.sendLeaveMessage(roomId, chat);
+                    
+                    log.info("채팅방 퇴장 처리 완료: roomId={}, userId={}", roomId, chat.getUserId());
+                } catch (Exception e) {
+                    log.error("채팅방 퇴장 처리 중 오류 발생: roomId={}, userId={}, error={}", roomId, chat.getUserId(), e.getMessage(), e);
+                }
+            });
+        } catch (Exception e) {
+            log.error("채팅방 퇴장 메시지 처리 실패: roomId={}, error={}", roomId, e.getMessage(), e);
+        }
     }
 }

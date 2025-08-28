@@ -15,7 +15,7 @@ public class ChatRoomDetailDTO {
 
     private String roomId;
     private String name;
-    private LocalDateTime regDate;
+    private String regDate;
     private Long participantCount;
     private List<ParticipantDTO> participants;
 

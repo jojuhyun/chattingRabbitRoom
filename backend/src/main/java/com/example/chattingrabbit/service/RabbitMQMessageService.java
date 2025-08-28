@@ -78,7 +78,7 @@ public class RabbitMQMessageService {
     public boolean isConnected() {
         try {
             rabbitTemplate.execute(channel -> {
-                channel.queueDeclarePassive("test.queue");
+                channel.queueDeclarePassive("chat.queue");
                 return true;
             });
             return true;

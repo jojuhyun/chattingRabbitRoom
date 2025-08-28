@@ -5,7 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "chat_messages")
@@ -35,10 +34,11 @@ public class ChatMessage {
     private String messageType; // ENTER, MESSAGE, BROADCAST, LEAVE
 
     @Column(name = "reg_date", nullable = false)
-    private LocalDateTime regDate;
+    private String regDate; // String으로 변경하여 직렬화 문제 해결
 
     @PrePersist
     protected void onCreate() {
-        regDate = LocalDateTime.now();
+        // LocalDateTime을 String으로 변환하여 저장
+        regDate = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     }
 }

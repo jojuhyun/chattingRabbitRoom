@@ -42,7 +42,7 @@ docker run -d --name rabbitmq --hostname rabbitmq -p 5672:5672 -p 15672:15672 -p
 docker exec rabbitmq rabbitmq-plugins enable rabbitmq_stomp
 
 # 4. 백엔드 실행
-docker run -d --name chattingrabbit-backend -p 8080:8080 chattingrabbit-backend:latest
+docker run -d --name chattingrabbit-backend -p 18080:8080 chattingrabbit-backend:latest
 
 # 5. 프론트엔드 실행
 docker run -d --name chattingrabbit-frontend -p 80:80 chattingrabbit-frontend:latest
@@ -51,8 +51,33 @@ docker run -d --name chattingrabbit-frontend -p 80:80 chattingrabbit-frontend:la
 ### **🌐 접속 주소**
 
 - **채팅 앱**: http://localhost
-- **백엔드 API**: http://localhost:8080
+- **백엔드 API**: http://localhost:18080
 - **RabbitMQ 관리**: http://localhost:15672 (admin/admin123)
+
+### **🆕 새로운 기능**
+
+- **닉네임 생성 시 비밀번호 설정**: 새 닉네임 생성 시 비밀번호 필수 입력
+- **기존 닉네임 로그인**: 생성된 닉네임과 비밀번호로 로그인 가능
+- **초기 화면**: 신규 닉네임 생성과 기존 닉네임 로그인 선택 화면
+- **채팅방 목록 개선**: 좌측(참여 채팅방) + 우측(전체 닉네임 목록) 2열 레이아웃
+
+### **🔌 포트 설정 설명**
+
+**중요**: 포트 설정이 일관되게 구성되어 있습니다.
+
+| 서비스                  | 호스트 포트 | 컨테이너 포트 | 설명                 |
+| ----------------------- | ----------- | ------------- | -------------------- |
+| **Frontend**            | 80          | 80            | 웹 인터페이스 (HTTP) |
+| **Backend**             | 18080       | 8080          | Spring Boot API 서버 |
+| **RabbitMQ AMQP**       | 5672        | 5672          | 메시지 브로커        |
+| **RabbitMQ Management** | 15672       | 15672         | 관리 콘솔            |
+| **RabbitMQ STOMP**      | 61613       | 61613         | WebSocket STOMP      |
+
+**포트 매핑 원리:**
+
+- Frontend(80) → nginx 프록시 → Backend(8080)
+- Docker 네트워크 내부: `chattingrabbit-backend:8080`
+- 호스트 접근: `localhost:18080`
 
 ---
 
@@ -585,7 +610,7 @@ docker network create rabbitmq-network
 # 백엔드 컨테이너 실행 (기본 네트워크 사용)
 docker run -d \
   --name chattingrabbit-backend \
-  -p 8080:8080 \
+  -p 18080:8080 \
   -e SPRING_PROFILES_ACTIVE=docker \
   chattingrabbit-backend:latest
 ```
@@ -597,7 +622,7 @@ docker run -d \
 docker run -d \
   --name chattingrabbit-backend \
   --network rabbitmq-network \
-  -p 8080:8080 \
+  -p 18080:8080 \
   -e SPRING_PROFILES_ACTIVE=docker \
   chattingrabbit-backend:latest
 ```
@@ -610,7 +635,7 @@ docker run -d \
 # 기본 네트워크 사용 시
 docker run -d \
   --name chattingrabbit-backend \
-  -p 127.0.0.1:8080:8080 \
+  -p 127.0.0.1:18080:8080 \
   -e SPRING_PROFILES_ACTIVE=docker \
   chattingrabbit-backend:latest
 
@@ -618,7 +643,7 @@ docker run -d \
 docker run -d \
   --name chattingrabbit-backend \
   --network rabbitmq-network \
-  -p 127.0.0.1:8080:8080 \
+  -p 127.0.0.1:18080:8080 \
   -e SPRING_PROFILES_ACTIVE=docker \
   chattingrabbit-backend:latest
 ```
@@ -657,7 +682,7 @@ docker run -d \
   --name chattingrabbit-backend \
   --network rabbitmq-network \
   --network-alias backend \
-  -p 0.0.0.0:8080:8080 \
+  -p 0.0.0.0:18080:8080 \
   -e SPRING_PROFILES_ACTIVE=docker \
   chattingrabbit-backend:latest
 ```
@@ -704,13 +729,13 @@ docker run -d \
 
 ```bash
 # 헬스체크
-curl http://localhost:8080/api/health
+curl http://localhost:18080/api/health
 
 # H2 콘솔 접속
-# http://localhost:8080/h2-console
+# http://localhost:18080/h2-console
 
 # WebSocket 연결 테스트
-# http://localhost:8080/ws
+# http://localhost:18080/ws
 ```
 
 ## 🌐 프론트엔드 배포
@@ -824,7 +849,7 @@ http {
     gzip_min_length 1024;
     gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
 
-    # 업스트림 서버 정의
+    # 업스트림 서버 정의 (Docker 네트워크 내부 통신)
     upstream backend {
         server chattingrabbit-backend:8080;
     }
@@ -1170,7 +1195,7 @@ services:
     build: ./backend
     container_name: chattingrabbit-backend
     ports:
-      - "8080:8080"
+      - "18080:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_RABBITMQ_HOST=rabbitmq
@@ -1314,8 +1339,8 @@ docker-compose logs backend | grep ERROR
 
 ```bash
 # 헬스체크 엔드포인트
-curl http://localhost:8080/api/health
-curl http://localhost:8080/api/health/rabbitmq
+curl http://localhost:18080/api/health
+curl http://localhost:18080/api/health/rabbitmq
 
 # RabbitMQ 상태 확인
 curl -u admin:admin123 http://localhost:15672/api/overview
@@ -1341,7 +1366,7 @@ docker port chattingrabbit-frontend
 
 ```bash
 # 포트 사용 중인 프로세스 확인
-netstat -ano | findstr :8080
+netstat -ano | findstr :18080
 
 # 프로세스 종료
 taskkill /PID <PID> /F
@@ -1509,7 +1534,7 @@ docker logs chattingrabbit-backend
 docker exec chattingrabbit-backend env | grep RABBITMQ
 
 # 데이터베이스 연결 테스트
-curl http://localhost:8080/h2-console
+curl http://localhost:18080/h2-console
 
 # 빌드 실패 시 상세 로그 확인
 docker build -t chattingrabbit-backend:latest . --progress=plain
@@ -1689,7 +1714,7 @@ docker exec rabbitmq rabbitmq-plugins enable rabbitmq_stomp
 # 3. 백엔드 실행
 docker run -d \
   --name chattingrabbit-backend \
-  -p 8080:8080 \
+  -p 18080:8080 \
   -e SPRING_PROFILES_ACTIVE=docker \
   chattingrabbit-backend:latest
 
@@ -1744,6 +1769,40 @@ docker images chattingrabbit-backend
 
 ## 📝 업데이트 이력
 
+### **새로운 기능 추가 (2025-01-22)**
+
+**🆕 구현된 주요 기능들:**
+
+1. **사용자 인증 시스템 강화**
+
+   - 닉네임 생성 시 비밀번호 필수 입력
+   - 기존 닉네임과 비밀번호로 로그인 가능
+   - 세션 관리 및 자동 로그아웃 기능
+
+2. **초기 화면 개선**
+
+   - 신규 닉네임 생성 버튼: `/nickname-register`로 이동
+   - 기존 닉네임 로그인 버튼: `/nickname-login`으로 이동
+   - 사용자 친화적인 서비스 소개
+
+3. **채팅방 목록 UI/UX 개선**
+
+   - 좌측 영역: 로그인한 사용자가 참여/생성한 채팅방 목록
+   - 우측 영역: 시스템 내 모든 생성된 닉네임 목록
+   - 반응형 디자인으로 모바일/데스크톱 모두 지원
+
+4. **백엔드 API 확장**
+
+   - `POST /api/users/login`: 닉네임 로그인 엔드포인트
+   - `GET /api/users/all-nicknames`: 전체 활성 닉네임 조회
+   - `POST /api/users/register`: 비밀번호 포함 닉네임 등록
+
+5. **프론트엔드 컴포넌트 추가**
+   - `Welcome.vue`: 초기 선택 화면
+   - `NicknameLogin.vue`: 로그인 화면
+   - `NicknameRegister.vue`: 비밀번호 필드 추가
+   - `ChatRooms.vue`: 2열 레이아웃으로 개선
+
 ### **최근 해결된 주요 문제들 (2025-01-22)**
 
 **🐛 해결된 빌드 오류:**
@@ -1786,6 +1845,13 @@ docker images chattingrabbit-backend
 - **Vue.js 프론트엔드**: 정상 빌드 및 Nginx 서빙
 
 **🎯 권장 사항:**
+
+**📌 포트 설정 일관성 개선 (2025-01-22):**
+
+- **문제**: `deployment-dockdesktop.md`의 포트 설정이 실제 프로젝트와 불일치
+- **해결**: 모든 Backend 포트를 `8080:8080` → `18080:8080`으로 통일
+- **영향**: Frontend → Backend 연결 정상화, nginx 프록시 설정과 일치
+- **수정 파일**: 빠른 시작, docker-compose.yml, nginx.conf, 실행 명령어 등
 
 - 항상 사전 준비사항 체크리스트 확인
 - 코드 수정 후 개별 빌드로 검증

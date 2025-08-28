@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import config from '../../env.config.js'
 
 export const useChatStore = defineStore('chat', () => {
   const chatRooms = ref([])
@@ -9,7 +10,7 @@ export const useChatStore = defineStore('chat', () => {
   // 채팅방 목록 조회 (참여한 방과 다른 방으로 분리)
   const fetchChatRoomList = async (userSession) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/chat/rooms?userSession=${userSession}`, {
+      const response = await fetch(`${config.API_BASE_URL}/api/chat/rooms?userSession=${userSession}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -32,7 +33,7 @@ export const useChatStore = defineStore('chat', () => {
   // 채팅방 생성 (타입 포함)
   const createChatRoomWithType = async (roomName, roomType, creatorNickname) => {
     try {
-      const response = await fetch('http://localhost:8080/api/chat/rooms', {
+      const response = await fetch(`${config.API_BASE_URL}/api/chat/rooms`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -60,7 +61,9 @@ export const useChatStore = defineStore('chat', () => {
   // 채팅방 상세 정보 조회
   const getChatRoomDetail = async (roomId, userSession) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/chat/rooms/${roomId}?userSession=${userSession}`, {
+      console.log('getChatRoomDetail 호출:', { roomId, userSession, url: `${config.API_BASE_URL}/api/chat/rooms/detail?roomId=${roomId}&userSession=${userSession}` })
+      
+      const response = await fetch(`${config.API_BASE_URL}/api/chat/rooms/detail?roomId=${roomId}&userSession=${userSession}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -68,6 +71,7 @@ export const useChatStore = defineStore('chat', () => {
       })
 
       const result = await response.json()
+      console.log('getChatRoomDetail 응답:', result)
       
       if (result.success) {
         return { success: true, roomDetail: result.roomDetail }
@@ -76,14 +80,22 @@ export const useChatStore = defineStore('chat', () => {
       }
     } catch (error) {
       console.error('채팅방 상세 정보 조회 오류:', error)
-      return { success: false, message: '채팅방 정보를 불러올 수 없습니다.' }
+      return { success: false, message: '채팅방 상세 정보를 불러올 수 없습니다.' }
     }
   }
 
   // 채팅방 참여
   const joinChatRoom = async (roomId, userSession) => {
+    console.log('=== ChatStore.joinChatRoom 시작 ===')
+    console.log('입력 파라미터:', { roomId, userSession })
+    console.log('config.API_BASE_URL:', config.API_BASE_URL)
+    
     try {
-      const response = await fetch(`http://localhost:8080/api/chat/rooms/${roomId}/join`, {
+      const apiUrl = `${config.API_BASE_URL}/api/chat/rooms/join?roomId=${roomId}`
+      console.log('API 호출 URL:', apiUrl)
+      console.log('요청 바디:', { userSession })
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -93,15 +105,22 @@ export const useChatStore = defineStore('chat', () => {
         }),
       })
 
+      console.log('API 응답 상태:', response.status, response.statusText)
+      console.log('API 응답 헤더:', Object.fromEntries(response.headers.entries()))
+      
       const result = await response.json()
+      console.log('API 응답 데이터:', result)
       
       if (result.success) {
+        console.log('채팅방 참여 성공')
         return { success: true, message: '채팅방에 입장했습니다.' }
       } else {
+        console.error('채팅방 참여 실패:', result.message)
         return { success: false, message: result.message }
       }
     } catch (error) {
-      console.error('채팅방 입장 오류:', error)
+      console.error('채팅방 입장 중 예외 발생:', error)
+      console.error('에러 스택:', error.stack)
       return { success: false, message: '채팅방 입장에 실패했습니다.' }
     }
   }
@@ -109,7 +128,7 @@ export const useChatStore = defineStore('chat', () => {
   // 채팅방 떠나기
   const leaveChatRoom = async (roomId, userSession) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/chat/rooms/${roomId}/leave`, {
+      const response = await fetch(`${config.API_BASE_URL}/api/chat/rooms/leave?roomId=${roomId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -135,7 +154,7 @@ export const useChatStore = defineStore('chat', () => {
   // 채팅 메시지 조회 (참여 시점 이후)
   const getChatMessages = async (roomId, userSession) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/chat/rooms/${roomId}/messages?userSession=${userSession}`, {
+      const response = await fetch(`${config.API_BASE_URL}/api/chat/rooms/messages?roomId=${roomId}&userSession=${userSession}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -158,7 +177,7 @@ export const useChatStore = defineStore('chat', () => {
   // 채팅 메시지 전송
   const sendChatMessage = async (messageData) => {
     try {
-      const response = await fetch('http://localhost:8080/api/chat/messages', {
+      const response = await fetch(`${config.API_BASE_URL}/api/chat/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -182,7 +201,7 @@ export const useChatStore = defineStore('chat', () => {
   // 사용자 초대
   const inviteUserToRoom = async (roomId, nickname) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/chat/rooms/${roomId}/invite`, {
+      const response = await fetch(`${config.API_BASE_URL}/api/chat/rooms/invite?roomId=${roomId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -195,7 +214,7 @@ export const useChatStore = defineStore('chat', () => {
       const result = await response.json()
       
       if (result.success) {
-        return { success: true, message: '사용자를 초대했습니다.' }
+        return { success: true, message: '사용자가 초대되었습니다.' }
       } else {
         return { success: false, message: result.message }
       }
@@ -208,7 +227,7 @@ export const useChatStore = defineStore('chat', () => {
   // 관리자용 채팅방 목록 조회
   const getAdminRoomList = async (userSession) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/admin/rooms?userSession=${userSession}`, {
+      const response = await fetch(`http://localhost/api/admin/rooms?userSession=${userSession}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -231,7 +250,7 @@ export const useChatStore = defineStore('chat', () => {
   // 채팅방 삭제 (관리자용)
   const deleteChatRoom = async (roomId, userSession) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/admin/rooms/${roomId}`, {
+      const response = await fetch(`http://localhost/api/admin/rooms/${roomId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -257,7 +276,7 @@ export const useChatStore = defineStore('chat', () => {
   // 자동 정리 실행 (관리자용)
   const runCleanup = async (userSession) => {
     try {
-      const response = await fetch('http://localhost:8080/api/admin/cleanup', {
+      const response = await fetch('http://localhost/api/admin/cleanup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -15,7 +15,7 @@ import java.util.Map;
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "${cors.allowed-origins:http://localhost:3000}")
 public class AdminController {
 
     private final ChatService chatService;
@@ -96,7 +96,7 @@ public class AdminController {
             // 수동으로 정리 실행
             chatService.removeUsersFromInactiveRooms();
             chatService.removeInactiveSessions();
-            
+
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "cleanedCount", 0, // 실제로는 정리된 수를 반환해야 함

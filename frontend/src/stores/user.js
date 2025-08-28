@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import config from '../../env.config.js'
 
 export const useUserStore = defineStore('user', () => {
   const currentUser = ref(null)
@@ -35,28 +36,37 @@ export const useUserStore = defineStore('user', () => {
     return true
   }
 
-  // 닉네임 등록
-  const registerNickname = async (nickname, introduction = '') => {
+  // 닉네임 등록 (비밀번호 포함)
+  const registerNickname = async (nickname, introduction = '', password = '') => {
     try {
-      const response = await fetch('http://localhost:8080/api/users/register', {
+      const response = await fetch(`${config.API_BASE_URL}/api/users/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           nickname,
-          introduction
+          introduction,
+          password
         }),
       })
 
       const result = await response.json()
+      console.log('닉네임 등록 응답:', result)
       
       if (result.success) {
+        console.log('응답 데이터 구조:', {
+          result: result,
+          nickname: result.nickname,
+          userSession: result.userSession,
+          introduction: result.introduction
+        })
+        
         currentUser.value = {
-          nickname: result.userSession.nickname,
-          userSession: result.userSession.userSession,
-          introduction: result.userSession.introduction,
-          isSuperAdmin: result.userSession.isSuperAdmin || false
+          nickname: result.nickname,
+          userSession: result.userSession,
+          introduction: result.introduction,
+          isSuperAdmin: result.isSuperAdmin || false
         }
         
         // 세션 스토리지에 저장
@@ -75,12 +85,53 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  // 닉네임 로그인
+  const loginNickname = async (nickname, password) => {
+    try {
+      const response = await fetch(`${config.API_BASE_URL}/api/users/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nickname,
+          password
+        }),
+      })
+
+      const result = await response.json()
+      console.log('닉네임 로그인 응답:', result)
+      
+      if (result.success) {
+        currentUser.value = {
+          nickname: result.nickname,
+          userSession: result.userSession,
+          introduction: result.introduction,
+          isSuperAdmin: result.isSuperAdmin || false
+        }
+        
+        // 세션 스토리지에 저장
+        sessionStorage.setItem('userSession', JSON.stringify(currentUser.value))
+        
+        // 세션 갱신 시작
+        startSessionRefresh()
+        
+        return { success: true, message: '로그인이 성공했습니다.' }
+      } else {
+        return { success: false, message: result.message }
+      }
+    } catch (error) {
+      console.error('닉네임 로그인 오류:', error)
+      return { success: false, message: '로그인에 실패했습니다.' }
+    }
+  }
+
   // 세션 갱신
   const refreshSession = async () => {
     if (!currentUser.value) return { success: false, message: '사용자 정보가 없습니다.' }
     
     try {
-      const response = await fetch('http://localhost:8080/api/users/refresh-session', {
+      const response = await fetch(`${config.API_BASE_URL}/api/users/refresh-session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -114,7 +165,7 @@ export const useUserStore = defineStore('user', () => {
   // 사용자 프로필 조회
   const getUserProfile = async (userSession) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/users/profile?userSession=${userSession}`, {
+      const response = await fetch(`${config.API_BASE_URL}/api/users/profile?userSession=${userSession}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -137,7 +188,7 @@ export const useUserStore = defineStore('user', () => {
   // 사용자 프로필 수정
   const updateUserProfile = async (userSession, introduction) => {
     try {
-      const response = await fetch('http://localhost:8080/api/users/update-profile', {
+      const response = await fetch(`${config.API_BASE_URL}/api/users/update-profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -164,7 +215,7 @@ export const useUserStore = defineStore('user', () => {
   // 사용자 초대 허용 설정 수정
   const updateAllowInvite = async (userSession, allowInvite) => {
     try {
-      const response = await fetch('http://localhost:8080/api/users/update-allow-invite', {
+      const response = await fetch(`${config.API_BASE_URL}/api/users/update-allow-invite`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -191,7 +242,7 @@ export const useUserStore = defineStore('user', () => {
   // 닉네임 삭제
   const deleteNickname = async (userSession) => {
     try {
-      const response = await fetch('http://localhost:8080/api/users/delete-nickname', {
+      const response = await fetch(`${config.API_BASE_URL}/api/users/delete-nickname`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -254,6 +305,7 @@ export const useUserStore = defineStore('user', () => {
     isSuperAdmin,
     checkSession,
     registerNickname,
+    loginNickname,
     refreshSession,
     getUserProfile,
     updateUserProfile,

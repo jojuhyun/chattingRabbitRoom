@@ -34,6 +34,9 @@ dependencies {
     // Reactor Netty for WebSocket STOMP
     implementation 'io.projectreactor.netty:reactor-netty'
     
+    // Jackson JSR310 모듈 (LocalDateTime 지원)
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    
     // H2 Database
     runtimeOnly 'com.h2database:h2'
     

@@ -24,6 +24,18 @@
           />
         </el-form-item>
         
+        <el-form-item prop="password">
+          <el-input
+            v-model="form.password"
+            type="password"
+            placeholder="비밀번호를 입력하세요 (4-20자)"
+            size="large"
+            maxlength="20"
+            show-password
+            clearable
+          />
+        </el-form-item>
+        
         <el-form-item prop="introduction">
           <el-input
             v-model="form.introduction"
@@ -76,6 +88,7 @@ const loading = ref(false)
 
 const form = reactive({
   nickname: '',
+  password: '',
   introduction: ''
 })
 
@@ -84,6 +97,10 @@ const rules = {
     { required: true, message: '닉네임을 입력해주세요', trigger: 'blur' },
     { min: 2, max: 20, message: '닉네임은 2-20자 사이여야 합니다', trigger: 'blur' },
     { pattern: /^[가-힣a-zA-Z0-9\s]+$/, message: '닉네임은 한글, 영문, 숫자, 공백만 사용 가능합니다', trigger: 'blur' }
+  ],
+  password: [
+    { required: true, message: '비밀번호를 입력해주세요', trigger: 'blur' },
+    { min: 4, max: 20, message: '비밀번호는 4-20자 사이여야 합니다', trigger: 'blur' }
   ]
 }
 
@@ -101,7 +118,7 @@ const registerNickname = async () => {
     await formRef.value.validate()
     loading.value = true
     
-    const result = await userStore.registerNickname(form.nickname, form.introduction)
+    const result = await userStore.registerNickname(form.nickname, form.introduction, form.password)
     if (result.success) {
       ElMessage.success(result.message)
       router.push('/rooms')

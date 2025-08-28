@@ -10,6 +10,7 @@ ChattingRabbit 프로젝트의 백엔드와 프론트엔드를 서버에 배포�
 4. [배포 스크립트](#-배포-스크립트)
 5. [배포 시 주의사항](#-배포-시-주의사항)
 6. [권장 배포 방식](#-권장-배포-방식)
+7. [🆕 새로운 기능 및 변경사항](#-🆕-새로운-기능-및-변경사항)
 
 ## 🖥️ 백엔드 배포 방법
 
@@ -797,6 +798,176 @@ sudo nginx -s reload
 - **로드 밸런싱**: HAProxy, Nginx Plus, AWS ALB
 - **CI/CD**: Jenkins, GitLab CI, GitHub Actions
 - **인프라**: Terraform, Ansible, Docker Swarm
+
+## 🆕 **새로운 기능 및 변경사항 (2025-01-22)**
+
+### **🔐 사용자 인증 시스템 강화**
+
+#### **새로 추가된 기능들**
+
+1. **닉네임 생성 시 비밀번호 필수**
+
+   - 새 닉네임 등록 시 비밀번호 입력 필수
+   - 데이터베이스에 비밀번호 해시 저장
+   - 보안 강화 및 사용자 계정 보호
+
+2. **기존 닉네임 로그인**
+
+   - 생성된 닉네임과 비밀번호로 로그인 가능
+   - 로그인 성공 시 세션 정보 업데이트
+   - 자동 로그아웃 및 세션 관리
+
+3. **전체 닉네임 목록 조회**
+   - 시스템 내 모든 활성 닉네임 목록 제공
+   - 채팅방 목록과 함께 2열 레이아웃으로 표시
+
+#### **새로운 API 엔드포인트**
+
+```bash
+# 닉네임 로그인
+POST /api/users/login
+{
+  "nickname": "사용자닉네임",
+  "password": "비밀번호"
+}
+
+# 전체 활성 닉네임 조회
+GET /api/users/all-nicknames
+
+# 닉네임 등록 (비밀번호 포함)
+POST /api/users/register
+{
+  "nickname": "새닉네임",
+  "introduction": "자기소개",
+  "password": "비밀번호"
+}
+```
+
+### **🎨 사용자 인터페이스 개선**
+
+#### **새로운 화면 구성**
+
+1. **Welcome.vue (초기 화면)**
+
+   - 신규 닉네임 생성 버튼
+   - 기존 닉네임 로그인 버튼
+   - 서비스 소개 및 사용 가이드
+
+2. **NicknameLogin.vue (로그인 화면)**
+
+   - 닉네임과 비밀번호 입력 폼
+   - 유효성 검증 및 오류 메시지
+   - 등록 페이지 및 초기 화면 링크
+
+3. **ChatRooms.vue (2열 레이아웃)**
+   - 좌측: 참여/생성한 채팅방 목록
+   - 우측: 전체 활성 닉네임 목록
+   - 반응형 디자인으로 모바일/데스크톱 지원
+
+#### **라우터 변경사항**
+
+```javascript
+// 기존: / → /nickname-register (리다이렉트)
+// 변경: / → Welcome.vue (초기 선택 화면)
+
+// 새로운 라우트 추가
+{
+  path: '/nickname-login',
+  name: 'NicknameLogin',
+  component: NicknameLogin
+}
+```
+
+### **🗄️ 데이터베이스 스키마 변경**
+
+#### **UserSession 엔티티 수정**
+
+```java
+@Entity
+@Table(name = "user_sessions")
+public class UserSession {
+    // ... 기존 필드들
+
+    @Column(name = "password", nullable = false)
+    private String password;  // 새로 추가된 필드
+
+    // ... 기존 필드들
+}
+```
+
+#### **새로운 DTO 클래스**
+
+```java
+// LoginRequestDTO.java
+public class LoginRequestDTO {
+    private String nickname;
+    private String password;
+}
+
+// UserSessionDTO.java (확장)
+public class UserSessionDTO {
+    // ... 기존 필드들
+    private String introduction;     // 새로 추가
+    private Boolean isSuperAdmin;   // 새로 추가
+}
+```
+
+### **🔧 배포 시 주의사항**
+
+#### **데이터베이스 마이그레이션**
+
+```sql
+-- 기존 테이블에 password 컬럼 추가
+ALTER TABLE user_sessions ADD COLUMN password VARCHAR(255) NOT NULL DEFAULT '';
+
+-- 기존 사용자들의 임시 비밀번호 설정 (필요시)
+UPDATE user_sessions SET password = 'temporary_password' WHERE password = '';
+```
+
+#### **환경 변수 설정**
+
+```bash
+# 새로운 기능 관련 환경 변수
+export USER_PASSWORD_REQUIRED=true
+export SESSION_TIMEOUT_MINUTES=30
+export MAX_LOGIN_ATTEMPTS=5
+```
+
+#### **보안 고려사항**
+
+1. **비밀번호 해싱**: BCrypt 등 안전한 해싱 알고리즘 사용
+2. **세션 관리**: JWT 토큰 또는 세션 기반 인증
+3. **입력 검증**: XSS 및 SQL 인젝션 방지
+4. **로깅**: 로그인 시도 및 실패 로그 기록
+
+### **🧪 테스트 시나리오**
+
+#### **기능 테스트 체크리스트**
+
+- [ ] 신규 닉네임 생성 (비밀번호 포함)
+- [ ] 기존 닉네임 로그인 (올바른 비밀번호)
+- [ ] 잘못된 비밀번호로 로그인 시도
+- [ ] 존재하지 않는 닉네임으로 로그인 시도
+- [ ] 채팅방 목록 2열 레이아웃 표시
+- [ ] 전체 닉네임 목록 조회 및 새로고침
+- [ ] 반응형 디자인 (모바일/데스크톱)
+
+#### **API 테스트**
+
+```bash
+# 닉네임 등록 테스트
+curl -X POST http://localhost:8080/api/users/register \
+  -H "Content-Type: application/json" \
+  -d '{"nickname":"testuser","password":"testpass","introduction":"테스트"}'
+
+# 로그인 테스트
+curl -X POST http://localhost:8080/api/users/login \
+  -H "Content-Type: application/json" \
+  -d '{"nickname":"testuser","password":"testpass"}'
+
+# 전체 닉네임 목록 조회 테스트
+curl http://localhost:8080/api/users/all-nicknames
+```
 
 ---
 

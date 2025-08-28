@@ -8,23 +8,25 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "${cors.allowed-origins:http://localhost:3000}")
 public class UserController {
 
     private final ChatService chatService;
 
-    // 닉네임 등록 및 세션 생성
+    // 닉네임 등록 및 세션 생성 (비밀번호 포함)
     @PostMapping("/register")
     public ResponseEntity<UserSessionDTO> registerNickname(@RequestBody Map<String, String> request) {
         try {
             String nickname = request.get("nickname");
             String introduction = request.get("introduction");
+            String password = request.get("password");
 
             if (nickname == null || nickname.trim().isEmpty()) {
                 return ResponseEntity.ok(UserSessionDTO.builder()
@@ -33,13 +35,52 @@ public class UserController {
                         .build());
             }
 
-            UserSessionDTO result = chatService.registerNickname(nickname.trim(), introduction);
+            if (password == null || password.trim().isEmpty()) {
+                return ResponseEntity.ok(UserSessionDTO.builder()
+                        .success(false)
+                        .message("비밀번호를 입력해주세요.")
+                        .build());
+            }
+
+            UserSessionDTO result = chatService.registerNickname(nickname.trim(), introduction, password.trim());
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("닉네임 등록 실패", e);
             return ResponseEntity.ok(UserSessionDTO.builder()
                     .success(false)
                     .message("닉네임 등록에 실패했습니다.")
+                    .build());
+        }
+    }
+
+    // 닉네임 로그인
+    @PostMapping("/login")
+    public ResponseEntity<UserSessionDTO> loginNickname(@RequestBody Map<String, String> request) {
+        try {
+            String nickname = request.get("nickname");
+            String password = request.get("password");
+
+            if (nickname == null || nickname.trim().isEmpty()) {
+                return ResponseEntity.ok(UserSessionDTO.builder()
+                        .success(false)
+                        .message("닉네임을 입력해주세요.")
+                        .build());
+            }
+
+            if (password == null || password.trim().isEmpty()) {
+                return ResponseEntity.ok(UserSessionDTO.builder()
+                        .success(false)
+                        .message("비밀번호를 입력해주세요.")
+                        .build());
+            }
+
+            UserSessionDTO result = chatService.loginNickname(nickname.trim(), password.trim());
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("닉네임 로그인 실패", e);
+            return ResponseEntity.ok(UserSessionDTO.builder()
+                    .success(false)
+                    .message("로그인에 실패했습니다.")
                     .build());
         }
     }
@@ -172,6 +213,22 @@ public class UserController {
             return ResponseEntity.ok(Map.of(
                     "success", false,
                     "message", "초대 허용 설정 업데이트에 실패했습니다."));
+        }
+    }
+
+    // 모든 활성 닉네임 목록 조회
+    @GetMapping("/all-nicknames")
+    public ResponseEntity<Map<String, Object>> getAllNicknames() {
+        try {
+            List<String> nicknames = chatService.getAllActiveNicknames();
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "nicknames", nicknames));
+        } catch (Exception e) {
+            log.error("닉네임 목록 조회 실패", e);
+            return ResponseEntity.ok(Map.of(
+                    "success", false,
+                    "message", "닉네임 목록 조회에 실패했습니다."));
         }
     }
 

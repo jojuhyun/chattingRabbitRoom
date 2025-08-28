@@ -21,7 +21,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -56,18 +55,11 @@ public class ChatService {
                 .collect(Collectors.toList());
     }
 
-    // 채팅방 생성
+    // 채팅방 생성 (기본)
     @Transactional
     public ChatRoomDTO createChatRoom(String name) {
         log.info("채팅방 생성: name={}", name);
-
-        ChatRoom chatRoom = ChatRoom.builder()
-                .roomId(name)
-                .name(name)
-                .build();
-
-        ChatRoom savedRoom = chatRoomRepository.save(chatRoom);
-        return convertToDTO(savedRoom);
+        return createChatRoom(name, "OPEN", "system"); // 기본값으로 system 사용
     }
 
     // 채팅방 정보 조회
@@ -97,10 +89,47 @@ public class ChatService {
         return ChatRoomDetailDTO.builder()
                 .roomId(room.getRoomId())
                 .name(room.getName())
-                .regDate(room.getRegDate())
+                .regDate(room.getRegDate()) // String 타입으로 처리
                 .participantCount(participantCount)
                 .participants(participantDTOs)
                 .build();
+    }
+
+    // userSession으로 nickname 조회
+    public String getNicknameByUserSession(String userSession) {
+        log.info("userSession으로 nickname 조회: userSession={}", userSession);
+
+        Optional<UserSession> userSessionOpt = userSessionRepository.findActiveSessionByUserSession(userSession);
+        if (userSessionOpt.isPresent()) {
+            String nickname = userSessionOpt.get().getNickname();
+            log.info("nickname 조회 성공: {}", nickname);
+            return nickname;
+        } else {
+            log.warn("유효하지 않은 userSession: {}", userSession);
+            return null;
+        }
+    }
+
+    // 생성자 자동 참여 처리 (채팅방 생성 시)
+    @Transactional
+    private void autoJoinCreatorToRoom(String roomId, String userId, String nickname) {
+        log.info("생성자 자동 참여: roomId={}, userId={}, nickname={}", roomId, userId, nickname);
+
+        // 다음 참여 순서 조회 (첫 번째 참여자이므로 1)
+        Integer joinOrder = 1;
+
+        // 새로운 참여 정보 생성
+        UserParticipation newParticipation = UserParticipation.builder()
+                .chatRoomId(roomId)
+                .userId(userId)
+                .nickname(nickname)
+                .joinOrder(joinOrder)
+                .isActive(true)
+                .enterTime(java.time.LocalDateTime.now())
+                .build();
+
+        userParticipationRepository.save(newParticipation);
+        log.info("생성자 자동 참여 완료: roomId={}, userId={}, nickname={}", roomId, userId, nickname);
     }
 
     // 사용자 입장 처리
@@ -132,21 +161,21 @@ public class ChatService {
         userParticipationRepository.save(newParticipation);
     }
 
-        // 사용자 퇴장 처리 (떠나기 버튼을 통한 퇴장)
+    // 사용자 퇴장 처리 (떠나기 버튼을 통한 퇴장)
     @Transactional
     public void leaveChatRoom(String roomId, String userId) {
         log.info("사용자 퇴장: roomId={}, userId={}", roomId, userId);
-        
+
         Optional<UserParticipation> participation = userParticipationRepository
                 .findActiveParticipationByRoomIdAndUserId(roomId, userId);
-        
+
         if (participation.isPresent()) {
             UserParticipation userParticipation = participation.get();
             userParticipation.setIsActive(false);
-            userParticipation.setLeaveTime(LocalDateTime.now());
+            userParticipation.setLeaveTime(java.time.LocalDateTime.now());
             userParticipationRepository.save(userParticipation);
             log.info("사용자가 채팅방을 떠났습니다: roomId={}, userId={}", roomId, userId);
-            
+
             // 퇴장 후 참여자가 0인지 확인하고 즉시 삭제
             Long participantCount = userParticipationRepository.countActiveParticipantsByRoomId(roomId);
             if (participantCount == 0) {
@@ -167,7 +196,7 @@ public class ChatService {
                 .nickname(chatDTO.getNickname())
                 .message(chatDTO.getMessage())
                 .messageType(chatDTO.getMessageType())
-                .regDate(chatDTO.getRegDate())
+                .regDate(chatDTO.getRegDate()) // String 타입으로 처리
                 .build();
 
         chatMessageRepository.save(message);
@@ -175,7 +204,7 @@ public class ChatService {
         // 채팅방의 마지막 메시지 시간 업데이트
         ChatRoom chatRoom = chatRoomRepository.findById(chatDTO.getChatRoomId()).orElse(null);
         if (chatRoom != null) {
-            chatRoom.setLastMessageTime(chatDTO.getRegDate());
+            chatRoom.setLastMessageTime(chatDTO.getRegDate()); // String 타입으로 처리
             chatRoomRepository.save(chatRoom);
         }
     }
@@ -207,45 +236,114 @@ public class ChatService {
                 .collect(Collectors.toList());
     }
 
-    // 닉네임 등록 및 세션 생성
+    // 닉네임 등록 및 세션 생성 (비밀번호 포함)
     @Transactional
-    public UserSessionDTO registerNickname(String nickname, String introduction) {
-        log.info("닉네임 등록: nickname={}", nickname);
+    public UserSessionDTO registerNickname(String nickname, String introduction, String password) {
+        log.info("닉네임 등록 시작: nickname={}, introduction={}", nickname, introduction);
 
-        // 닉네임 중복 확인
-        Optional<UserSession> existingSession = userSessionRepository.findActiveSessionByNickname(nickname);
-        if (existingSession.isPresent()) {
+        try {
+            // 입력값 검증
+            if (nickname == null || nickname.trim().isEmpty()) {
+                log.warn("닉네임이 비어있습니다.");
+                return UserSessionDTO.builder()
+                        .success(false)
+                        .message("닉네임을 입력해주세요.")
+                        .build();
+            }
+
+            if (password == null || password.trim().isEmpty()) {
+                log.warn("비밀번호가 비어있습니다.");
+                return UserSessionDTO.builder()
+                        .success(false)
+                        .message("비밀번호를 입력해주세요.")
+                        .build();
+            }
+
+            // 닉네임 중복 확인
+            Optional<UserSession> existingSession = userSessionRepository.findActiveSessionByNickname(nickname.trim());
+            if (existingSession.isPresent()) {
+                log.warn("이미 사용 중인 닉네임입니다: {}", nickname);
+                return UserSessionDTO.builder()
+                        .success(false)
+                        .message("이미 사용 중인 닉네임입니다.")
+                        .build();
+            }
+
+            // 새로운 UUID 생성
+            String userSession = UUID.randomUUID().toString();
+            log.info("새로운 userSession 생성: {}", userSession);
+
+            // 세션 저장 (비밀번호 포함)
+            UserSession session = UserSession.builder()
+                    .nickname(nickname.trim())
+                    .userSession(userSession)
+                    .introduction(introduction != null ? introduction.trim() : "")
+                    .password(password.trim())
+                    .build();
+
+            log.info("UserSession 엔티티 생성 완료: {}", session);
+            userSessionRepository.save(session);
+            log.info("닉네임 등록 성공: nickname={}, userSession={}", nickname, userSession);
+
+            return UserSessionDTO.builder()
+                    .nickname(nickname)
+                    .userSession(userSession)
+                    .introduction(introduction != null ? introduction : "")
+                    .success(true)
+                    .message("닉네임이 성공적으로 등록되었습니다.")
+                    .build();
+
+        } catch (Exception e) {
+            log.error("닉네임 등록 중 예외 발생: nickname={}, error={}", nickname, e.getMessage(), e);
             return UserSessionDTO.builder()
                     .success(false)
-                    .message("이미 사용 중인 닉네임입니다.")
+                    .message("닉네임 등록에 실패했습니다: " + e.getMessage())
+                    .build();
+        }
+    }
+
+    // 닉네임 로그인 (비밀번호 인증)
+    @Transactional
+    public UserSessionDTO loginNickname(String nickname, String password) {
+        log.info("닉네임 로그인 시도: nickname={}", nickname);
+
+        // 닉네임으로 사용자 세션 조회
+        Optional<UserSession> existingSession = userSessionRepository.findActiveSessionByNickname(nickname);
+        if (existingSession.isEmpty()) {
+            return UserSessionDTO.builder()
+                    .success(false)
+                    .message("존재하지 않는 닉네임입니다.")
                     .build();
         }
 
-        // 새로운 UUID 생성
-        String userSession = UUID.randomUUID().toString();
+        UserSession userSession = existingSession.get();
 
-        // 세션 저장
-        UserSession session = UserSession.builder()
-                .nickname(nickname)
-                .userSession(userSession)
-                .introduction(introduction != null ? introduction : "")
-                .build();
+        // 비밀번호 확인
+        if (!password.equals(userSession.getPassword())) {
+            return UserSessionDTO.builder()
+                    .success(false)
+                    .message("비밀번호가 일치하지 않습니다.")
+                    .build();
+        }
 
-        userSessionRepository.save(session);
+        // 마지막 업데이트 시간 갱신
+        userSession.setLastUpdate(java.time.LocalDateTime.now());
+        userSessionRepository.save(userSession);
 
         return UserSessionDTO.builder()
-                .nickname(nickname)
-                .userSession(userSession)
+                .nickname(userSession.getNickname())
+                .userSession(userSession.getUserSession())
+                .introduction(userSession.getIntroduction())
                 .success(true)
-                .message("닉네임이 성공적으로 등록되었습니다.")
+                .message("로그인이 성공했습니다.")
                 .build();
     }
 
-        // 사용자 소개 수정
+    // 사용자 소개 수정
     @Transactional
     public boolean updateUserIntroduction(String nickname, String introduction) {
         log.info("사용자 소개 수정: nickname={}", nickname);
-        
+
         Optional<UserSession> session = userSessionRepository.findActiveSessionByNickname(nickname);
         if (session.isPresent()) {
             UserSession userSession = session.get();
@@ -260,7 +358,7 @@ public class ChatService {
     @Transactional
     public boolean updateUserAllowInvite(String nickname, Boolean allowInvite) {
         log.info("사용자 초대 허용 설정 수정: nickname={}, allowInvite={}", nickname, allowInvite);
-        
+
         Optional<UserSession> session = userSessionRepository.findActiveSessionByNickname(nickname);
         if (session.isPresent()) {
             UserSession userSession = session.get();
@@ -287,7 +385,7 @@ public class ChatService {
                     .findActiveParticipationsByUserId(userSession.getUserSession());
             for (UserParticipation participation : participations) {
                 participation.setIsActive(false);
-                participation.setLeaveTime(LocalDateTime.now());
+                participation.setLeaveTime(java.time.LocalDateTime.now());
                 userParticipationRepository.save(participation);
             }
 
@@ -303,31 +401,85 @@ public class ChatService {
         Optional<UserSession> session = userSessionRepository.findActiveSessionByUserSession(userSession);
         if (session.isPresent()) {
             UserSession userSessionEntity = session.get();
-                    return UserProfileDTO.builder()
-                .nickname(userSessionEntity.getNickname())
-                .introduction(userSessionEntity.getIntroduction())
-                .allowInvite(userSessionEntity.getAllowInvite())
-                .lastUpdate(userSessionEntity.getLastUpdate())
-                .isActive(userSessionEntity.getIsActive())
-                .build();
+            return UserProfileDTO.builder()
+                    .nickname(userSessionEntity.getNickname())
+                    .introduction(userSessionEntity.getIntroduction())
+                    .allowInvite(userSessionEntity.getAllowInvite())
+                    .lastUpdate(userSessionEntity.getLastUpdate())
+                    .isActive(userSessionEntity.getIsActive())
+                    .build();
         }
         return null;
+    }
+
+    // 모든 활성 닉네임 목록 조회
+    public List<String> getAllActiveNicknames() {
+        log.info("모든 활성 닉네임 목록 조회");
+        List<UserSession> activeSessions = userSessionRepository.findAllActiveSessions();
+        return activeSessions.stream()
+                .map(UserSession::getNickname)
+                .collect(Collectors.toList());
     }
 
     // 채팅방 생성 (타입 지정)
     @Transactional
     public ChatRoomDTO createChatRoom(String name, String roomType, String creatorNickname) {
-        log.info("채팅방 생성: name={}, type={}, creator={}", name, roomType, creatorNickname);
+        log.info("채팅방 생성 시작: name={}, type={}, creator={}", name, roomType, creatorNickname);
 
-        ChatRoom chatRoom = ChatRoom.builder()
-                .roomId(name)
-                .name(name)
-                .roomType(roomType)
-                .creatorNickname(creatorNickname)
-                .build();
+        try {
+            // 입력값 검증
+            if (name == null || name.trim().isEmpty()) {
+                throw new IllegalArgumentException("채팅방 이름이 비어있습니다.");
+            }
 
-        ChatRoom savedRoom = chatRoomRepository.save(chatRoom);
-        return convertToDTO(savedRoom);
+            if (roomType == null || (!roomType.equals("OPEN") && !roomType.equals("PRIVATE"))) {
+                roomType = "OPEN"; // 기본값
+                log.info("기본 채팅방 타입으로 설정: {}", roomType);
+            }
+
+            if (creatorNickname == null || creatorNickname.trim().isEmpty()) {
+                throw new IllegalArgumentException("생성자 닉네임이 비어있습니다.");
+            }
+
+            ChatRoom chatRoom = ChatRoom.builder()
+                    .roomId(name)
+                    .name(name)
+                    .roomType(roomType)
+                    .creatorNickname(creatorNickname)
+                    .build();
+
+            log.info("ChatRoom 엔티티 생성 완료: {}", chatRoom);
+
+            ChatRoom savedRoom = chatRoomRepository.save(chatRoom);
+            log.info("채팅방 저장 완료: roomId={}", savedRoom.getRoomId());
+
+            // 생성자를 자동으로 채팅방에 참여시킴
+            try {
+                // 생성자의 사용자 ID 조회
+                Optional<UserSession> creatorSession = userSessionRepository
+                        .findActiveSessionByNickname(creatorNickname);
+                if (creatorSession.isPresent()) {
+                    String creatorUserId = creatorSession.get().getUserSession();
+
+                    // 생성자 자동 참여 처리
+                    autoJoinCreatorToRoom(savedRoom.getRoomId(), creatorUserId, creatorNickname);
+                    log.info("생성자 자동 참여 완료: roomId={}, creator={}", savedRoom.getRoomId(), creatorNickname);
+                } else {
+                    log.warn("생성자 세션을 찾을 수 없습니다: creator={}", creatorNickname);
+                }
+            } catch (Exception e) {
+                log.error("생성자 자동 참여 중 오류 발생: {}", e.getMessage(), e);
+                // 자동 참여 실패해도 채팅방 생성은 계속 진행
+            }
+
+            ChatRoomDTO result = convertToDTO(savedRoom);
+            log.info("DTO 변환 완료: {}", result);
+
+            return result;
+        } catch (Exception e) {
+            log.error("채팅방 생성 중 오류 발생: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     // 채팅방 목록 조회 (참여한 방과 다른 방 구분)
@@ -340,15 +492,23 @@ public class ChatService {
         // 개인 채팅방 목록 (참여자만)
         List<ChatRoom> privateRooms = chatRoomRepository.findPrivateChatRoomsByUserId(userId);
 
-        // 참여한 방들 (오픈 + 개인)
+        // 참여한 오픈 채팅방들만 필터링
+        List<ChatRoom> participatedOpenRooms = openRooms.stream()
+                .filter(room -> isUserParticipating(room.getRoomId(), userId))
+                .collect(Collectors.toList());
+
+        // 참여한 방들 (참여한 오픈 + 개인)
         List<ChatRoom> participatedRooms = new ArrayList<>();
-        participatedRooms.addAll(openRooms);
+        participatedRooms.addAll(participatedOpenRooms);
         participatedRooms.addAll(privateRooms);
 
         // 참여하지 않은 오픈 채팅방들
         List<ChatRoom> otherOpenRooms = openRooms.stream()
                 .filter(room -> !isUserParticipating(room.getRoomId(), userId))
                 .collect(Collectors.toList());
+
+        log.info("채팅방 분류 결과: participatedRooms={}, otherRooms={}",
+                participatedRooms.size(), otherOpenRooms.size());
 
         return ChatRoomListDTO.builder()
                 .participatedRooms(convertToChatRoomListDTO(participatedRooms, userId))
@@ -406,7 +566,7 @@ public class ChatService {
                 // 이전에 퇴장한 사용자이므로 재입장 처리
                 prev.setIsActive(true);
                 prev.setLeaveTime(null);
-                prev.setEnterTime(LocalDateTime.now());
+                prev.setEnterTime(java.time.LocalDateTime.now());
                 userParticipationRepository.save(prev);
 
                 return InviteUserDTO.builder()
@@ -427,7 +587,7 @@ public class ChatService {
                 .nickname(targetNickname)
                 .joinOrder(nextJoinOrder)
                 .isInvited(true)
-                .inviteTime(LocalDateTime.now())
+                .inviteTime(java.time.LocalDateTime.now())
                 .build();
 
         userParticipationRepository.save(participation);
@@ -448,25 +608,25 @@ public class ChatService {
         return participation.isPresent();
     }
 
-        // 3일 이상 메시지가 없는 채팅방의 모든 참여자 퇴장 처리 및 빈 채팅방 삭제
+    // 3일 이상 메시지가 없는 채팅방의 모든 참여자 퇴장 처리 및 빈 채팅방 삭제
     @Scheduled(fixedRate = 3600000) // 1시간마다 실행
     @Transactional
     public void removeUsersFromInactiveRooms() {
         log.info("비활성 채팅방 사용자 자동 퇴장 처리 및 빈 채팅방 삭제 시작");
-        
-        LocalDateTime cutoffTime = LocalDateTime.now().minusDays(3);
+
+        java.time.LocalDateTime cutoffTime = java.time.LocalDateTime.now().minusDays(3);
         List<UserParticipation> inactiveParticipants = userParticipationRepository
                 .findActiveParticipantsInInactiveRooms(cutoffTime);
-        
+
         for (UserParticipation participation : inactiveParticipants) {
             participation.setIsActive(false);
-            participation.setLeaveTime(LocalDateTime.now());
+            participation.setLeaveTime(java.time.LocalDateTime.now());
             userParticipationRepository.save(participation);
             log.info("사용자 자동 퇴장: roomId={}, userId={}", participation.getChatRoomId(), participation.getUserId());
         }
-        
+
         log.info("비활성 채팅방 사용자 자동 퇴장 처리 완료: {}명", inactiveParticipants.size());
-        
+
         // 참여자가 0인 채팅방 즉시 삭제
         deleteEmptyChatRooms();
     }
@@ -477,7 +637,7 @@ public class ChatService {
     public void removeInactiveSessions() {
         log.info("비활성 세션 자동 삭제 처리 시작");
 
-        LocalDateTime cutoffTime = LocalDateTime.now().minusMinutes(30);
+        java.time.LocalDateTime cutoffTime = java.time.LocalDateTime.now().minusMinutes(30);
         List<UserSession> inactiveSessions = userSessionRepository.findInactiveSessions(cutoffTime);
 
         for (UserSession session : inactiveSessions) {
@@ -489,21 +649,21 @@ public class ChatService {
         log.info("비활성 세션 자동 삭제 처리 완료: {}개", inactiveSessions.size());
     }
 
-        // 특정 빈 채팅방 즉시 삭제 (메시지 포함)
+    // 특정 빈 채팅방 즉시 삭제 (메시지 포함)
     @Transactional
     public void deleteEmptyChatRoom(String roomId) {
         log.info("빈 채팅방 즉시 삭제: roomId={}", roomId);
-        
+
         Optional<ChatRoom> roomOpt = chatRoomRepository.findById(roomId);
         if (roomOpt.isPresent()) {
             ChatRoom room = roomOpt.get();
-            
+
             // 메시지 삭제
             chatMessageRepository.deleteByChatRoomId(roomId);
-            
+
             // 채팅방 삭제
             chatRoomRepository.delete(room);
-            
+
             log.info("빈 채팅방 삭제 완료: roomId={}, name={}", roomId, room.getName());
         }
     }
@@ -512,29 +672,29 @@ public class ChatService {
     @Transactional
     public void deleteEmptyChatRooms() {
         log.info("빈 채팅방 즉시 삭제 처리 시작");
-        
+
         // 활성 상태인 모든 채팅방 조회
         List<ChatRoom> activeRooms = chatRoomRepository.findAllActiveRooms();
         int deletedCount = 0;
-        
+
         for (ChatRoom room : activeRooms) {
             // 각 채팅방의 활성 참여자 수 확인
             Long participantCount = userParticipationRepository.countActiveParticipantsByRoomId(room.getRoomId());
-            
+
             if (participantCount == 0) {
                 // 참여자가 0인 경우 메시지와 채팅방 모두 삭제
                 log.info("빈 채팅방 삭제: roomId={}, name={}", room.getRoomId(), room.getName());
-                
+
                 // 메시지 삭제
                 chatMessageRepository.deleteByChatRoomId(room.getRoomId());
-                
+
                 // 채팅방 삭제
                 chatRoomRepository.delete(room);
-                
+
                 deletedCount++;
             }
         }
-        
+
         log.info("빈 채팅방 즉시 삭제 처리 완료: {}개", deletedCount);
     }
 
@@ -542,14 +702,14 @@ public class ChatService {
     @Transactional
     public boolean deleteChatRoom(String roomId) {
         log.info("채팅방 완전 삭제: roomId={}", roomId);
-        
+
         // 참여자가 없는 방인지 확인
         Long participantCount = userParticipationRepository.countActiveParticipantsByRoomId(roomId);
         if (participantCount > 0) {
             log.warn("참여자가 있는 채팅방은 삭제할 수 없습니다: roomId={}, participantCount={}", roomId, participantCount);
             return false;
         }
-        
+
         // 채팅방 비활성화
         Optional<ChatRoom> chatRoom = chatRoomRepository.findById(roomId);
         if (chatRoom.isPresent()) {
@@ -559,7 +719,7 @@ public class ChatService {
             log.info("채팅방 비활성화 완료: roomId={}", roomId);
             return true;
         }
-        
+
         return false;
     }
 
@@ -588,7 +748,7 @@ public class ChatService {
         // 새로운 UUID 생성
         String newUserSession = UUID.randomUUID().toString();
         session.setUserSession(newUserSession);
-        session.setLastUpdate(LocalDateTime.now());
+        session.setLastUpdate(java.time.LocalDateTime.now());
 
         userSessionRepository.save(session);
 

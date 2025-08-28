@@ -1,10 +1,5 @@
 package com.example.chattingrabbit.dto;
 
-import java.time.LocalDateTime;
-
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -26,6 +21,5 @@ public class ChatDTO {
     private String region;
     private String messageType; // "ENTER", "MESSAGE", "BROADCAST", "LEAVE"
 
-    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
-    private LocalDateTime regDate;
+    private String regDate; // String으로 변경하여 직렬화 문제 해결
 }

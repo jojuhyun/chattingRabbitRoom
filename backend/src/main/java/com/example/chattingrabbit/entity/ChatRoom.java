@@ -5,7 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "chat_rooms")
@@ -29,18 +28,20 @@ public class ChatRoom {
     private String creatorNickname;
 
     @Column(name = "reg_date", nullable = false)
-    private LocalDateTime regDate;
+    private String regDate; // String으로 변경하여 직렬화 문제 해결
 
     @Column(name = "last_message_time")
-    private LocalDateTime lastMessageTime;
+    private String lastMessageTime; // String으로 변경하여 직렬화 문제 해결
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
 
     @PrePersist
     protected void onCreate() {
-        regDate = LocalDateTime.now();
-        lastMessageTime = LocalDateTime.now();
+        // LocalDateTime을 String으로 변환하여 저장
+        String currentTime = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        regDate = currentTime;
+        lastMessageTime = currentTime;
         isActive = true;
     }
 }

@@ -18,7 +18,7 @@ import java.util.Map;
 @RequestMapping("/api/chat")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "${cors.allowed-origins:http://localhost:3000}")
 public class ChatController {
 
     private final ChatService chatService;
@@ -62,16 +62,16 @@ public class ChatController {
                     "success", true,
                     "room", newRoom));
         } catch (Exception e) {
-            log.error("채팅방 생성 실패", e);
+            log.error("채팅방 생성 실패: {}", e.getMessage(), e);
             return ResponseEntity.ok(Map.of(
                     "success", false,
-                    "message", "채팅방 생성에 실패했습니다."));
+                    "message", "채팅방 생성에 실패했습니다: " + e.getMessage()));
         }
     }
 
     // 채팅방 상세 정보 조회 (참여자 목록 포함)
-    @GetMapping("/rooms/{roomId}")
-    public ResponseEntity<Map<String, Object>> getChatRoomDetail(@PathVariable String roomId,
+    @GetMapping("/rooms/detail")
+    public ResponseEntity<Map<String, Object>> getChatRoomDetail(@RequestParam String roomId,
             @RequestParam String userSession) {
         try {
             ChatRoomDetailDTO roomDetail = chatService.getChatRoomDetail(roomId);
@@ -93,8 +93,8 @@ public class ChatController {
     }
 
     // 채팅방 참여
-    @PostMapping("/rooms/{roomId}/join")
-    public ResponseEntity<Map<String, Object>> joinChatRoom(@PathVariable String roomId,
+    @PostMapping("/rooms/join")
+    public ResponseEntity<Map<String, Object>> joinChatRoom(@RequestParam String roomId,
             @RequestBody Map<String, String> request) {
         try {
             String userSession = request.get("userSession");
@@ -104,8 +104,13 @@ public class ChatController {
                         "message", "세션 정보가 필요합니다."));
             }
 
-            // userSession으로 nickname 조회 (간단한 구현)
-            String nickname = "User_" + userSession.substring(0, 8); // 임시 구현
+            // userSession으로 실제 nickname 조회
+            String nickname = chatService.getNicknameByUserSession(userSession);
+            if (nickname == null) {
+                return ResponseEntity.ok(Map.of(
+                        "success", false,
+                        "message", "유효하지 않은 사용자 세션입니다."));
+            }
 
             chatService.enterChatRoom(roomId, userSession, nickname);
             return ResponseEntity.ok(Map.of(
@@ -120,8 +125,8 @@ public class ChatController {
     }
 
     // 채팅방 떠나기
-    @PostMapping("/rooms/{roomId}/leave")
-    public ResponseEntity<Map<String, Object>> leaveChatRoom(@PathVariable String roomId,
+    @PostMapping("/rooms/leave")
+    public ResponseEntity<Map<String, Object>> leaveChatRoom(@RequestParam String roomId,
             @RequestBody Map<String, String> request) {
         try {
             String userSession = request.get("userSession");
@@ -144,8 +149,8 @@ public class ChatController {
     }
 
     // 사용자 입장 이후 메시지 조회
-    @GetMapping("/rooms/{roomId}/messages")
-    public ResponseEntity<Map<String, Object>> getChatMessages(@PathVariable String roomId,
+    @GetMapping("/rooms/messages")
+    public ResponseEntity<Map<String, Object>> getChatMessages(@RequestParam String roomId,
             @RequestParam String userSession) {
         try {
             List<ChatDTO> messages = chatService.getChatMessages(roomId, userSession);
@@ -172,13 +177,13 @@ public class ChatController {
             log.error("메시지 전송 실패", e);
             return ResponseEntity.ok(Map.of(
                     "success", false,
-                    "message", "메시지 전송에 실패했습니다."));
+                    "message", "메시지가 전송되었습니다."));
         }
     }
 
     // 사용자 초대
-    @PostMapping("/rooms/{roomId}/invite")
-    public ResponseEntity<InviteUserDTO> inviteUserToRoom(@PathVariable String roomId,
+    @PostMapping("/rooms/invite")
+    public ResponseEntity<InviteUserDTO> inviteUserToRoom(@RequestParam String roomId,
             @RequestBody Map<String, String> request) {
         try {
             String targetNickname = request.get("nickname");

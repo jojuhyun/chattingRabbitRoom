@@ -19,8 +19,14 @@ export default defineConfig({
     },
     cors: true
   },
+  optimizeDeps: {
+    include: ['sockjs-client']
+  },
   build: {
     outDir: 'dist',
-    assetsDir: 'assets'
+    assetsDir: 'assets',
+    commonjsOptions: {
+      include: [/sockjs-client/, /node_modules/]
+    }
   }
 })
