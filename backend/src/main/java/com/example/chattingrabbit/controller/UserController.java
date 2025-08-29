@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/rabbit/api/users")
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "${cors.allowed-origins:http://localhost:3000}")

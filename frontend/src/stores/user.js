@@ -39,7 +39,7 @@ export const useUserStore = defineStore('user', () => {
   // 닉네임 등록 (비밀번호 포함)
   const registerNickname = async (nickname, introduction = '', password = '') => {
     try {
-      const response = await fetch(`${config.API_BASE_URL}/api/users/register`, {
+      const response = await fetch(`${config.API_BASE_URL}/rabbit/api/users/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -88,7 +88,7 @@ export const useUserStore = defineStore('user', () => {
   // 닉네임 로그인
   const loginNickname = async (nickname, password) => {
     try {
-      const response = await fetch(`${config.API_BASE_URL}/api/users/login`, {
+      const response = await fetch(`${config.API_BASE_URL}/rabbit/api/users/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -131,7 +131,7 @@ export const useUserStore = defineStore('user', () => {
     if (!currentUser.value) return { success: false, message: '사용자 정보가 없습니다.' }
     
     try {
-      const response = await fetch(`${config.API_BASE_URL}/api/users/refresh-session`, {
+      const response = await fetch(`${config.API_BASE_URL}/rabbit/api/users/refresh-session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -165,7 +165,7 @@ export const useUserStore = defineStore('user', () => {
   // 사용자 프로필 조회
   const getUserProfile = async (userSession) => {
     try {
-      const response = await fetch(`${config.API_BASE_URL}/api/users/profile?userSession=${userSession}`, {
+      const response = await fetch(`${config.API_BASE_URL}/rabbit/api/users/profile?userSession=${userSession}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -188,7 +188,7 @@ export const useUserStore = defineStore('user', () => {
   // 사용자 프로필 수정
   const updateUserProfile = async (userSession, introduction) => {
     try {
-      const response = await fetch(`${config.API_BASE_URL}/api/users/update-profile`, {
+      const response = await fetch(`${config.API_BASE_URL}/rabbit/api/users/update-profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -215,7 +215,7 @@ export const useUserStore = defineStore('user', () => {
   // 사용자 초대 허용 설정 수정
   const updateAllowInvite = async (userSession, allowInvite) => {
     try {
-      const response = await fetch(`${config.API_BASE_URL}/api/users/update-allow-invite`, {
+      const response = await fetch(`${config.API_BASE_URL}/rabbit/api/users/update-allow-invite`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -242,7 +242,7 @@ export const useUserStore = defineStore('user', () => {
   // 닉네임 삭제
   const deleteNickname = async (userSession) => {
     try {
-      const response = await fetch(`${config.API_BASE_URL}/api/users/delete-nickname`, {
+      const response = await fetch(`${config.API_BASE_URL}/rabbit/api/users/delete-nickname`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

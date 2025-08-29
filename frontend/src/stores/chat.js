@@ -10,7 +10,7 @@ export const useChatStore = defineStore('chat', () => {
   // 채팅방 목록 조회 (참여한 방과 다른 방으로 분리)
   const fetchChatRoomList = async (userSession) => {
     try {
-      const response = await fetch(`${config.API_BASE_URL}/api/chat/rooms?userSession=${userSession}`, {
+      const response = await fetch(`${config.API_BASE_URL}/rabbit/api/chat/rooms?userSession=${userSession}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -33,7 +33,7 @@ export const useChatStore = defineStore('chat', () => {
   // 채팅방 생성 (타입 포함)
   const createChatRoomWithType = async (roomName, roomType, creatorNickname) => {
     try {
-      const response = await fetch(`${config.API_BASE_URL}/api/chat/rooms`, {
+      const response = await fetch(`${config.API_BASE_URL}/rabbit/api/chat/rooms`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -61,9 +61,9 @@ export const useChatStore = defineStore('chat', () => {
   // 채팅방 상세 정보 조회
   const getChatRoomDetail = async (roomId, userSession) => {
     try {
-      console.log('getChatRoomDetail 호출:', { roomId, userSession, url: `${config.API_BASE_URL}/api/chat/rooms/detail?roomId=${roomId}&userSession=${userSession}` })
+      console.log('getChatRoomDetail 호출:', { roomId, userSession, url: `${config.API_BASE_URL}/rabbit/api/chat/rooms/detail?roomId=${roomId}&userSession=${userSession}` })
       
-      const response = await fetch(`${config.API_BASE_URL}/api/chat/rooms/detail?roomId=${roomId}&userSession=${userSession}`, {
+      const response = await fetch(`${config.API_BASE_URL}/rabbit/api/chat/rooms/detail?roomId=${roomId}&userSession=${userSession}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -91,7 +91,7 @@ export const useChatStore = defineStore('chat', () => {
     console.log('config.API_BASE_URL:', config.API_BASE_URL)
     
     try {
-      const apiUrl = `${config.API_BASE_URL}/api/chat/rooms/join?roomId=${roomId}`
+      const apiUrl = `${config.API_BASE_URL}/rabbit/api/chat/rooms/join?roomId=${roomId}`
       console.log('API 호출 URL:', apiUrl)
       console.log('요청 바디:', { userSession })
       
@@ -128,7 +128,7 @@ export const useChatStore = defineStore('chat', () => {
   // 채팅방 떠나기
   const leaveChatRoom = async (roomId, userSession) => {
     try {
-      const response = await fetch(`${config.API_BASE_URL}/api/chat/rooms/leave?roomId=${roomId}`, {
+      const response = await fetch(`${config.API_BASE_URL}/rabbit/api/chat/rooms/leave?roomId=${roomId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -154,7 +154,7 @@ export const useChatStore = defineStore('chat', () => {
   // 채팅 메시지 조회 (참여 시점 이후)
   const getChatMessages = async (roomId, userSession) => {
     try {
-      const response = await fetch(`${config.API_BASE_URL}/api/chat/rooms/messages?roomId=${roomId}&userSession=${userSession}`, {
+      const response = await fetch(`${config.API_BASE_URL}/rabbit/api/chat/rooms/messages?roomId=${roomId}&userSession=${userSession}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -177,7 +177,7 @@ export const useChatStore = defineStore('chat', () => {
   // 채팅 메시지 전송
   const sendChatMessage = async (messageData) => {
     try {
-      const response = await fetch(`${config.API_BASE_URL}/api/chat/messages`, {
+      const response = await fetch(`${config.API_BASE_URL}/rabbit/api/chat/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -201,7 +201,7 @@ export const useChatStore = defineStore('chat', () => {
   // 사용자 초대
   const inviteUserToRoom = async (roomId, nickname) => {
     try {
-      const response = await fetch(`${config.API_BASE_URL}/api/chat/rooms/invite?roomId=${roomId}`, {
+      const response = await fetch(`${config.API_BASE_URL}/rabbit/api/chat/rooms/invite?roomId=${roomId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -227,7 +227,7 @@ export const useChatStore = defineStore('chat', () => {
   // 관리자용 채팅방 목록 조회
   const getAdminRoomList = async (userSession) => {
     try {
-      const response = await fetch(`http://localhost/api/admin/rooms?userSession=${userSession}`, {
+      const response = await fetch(`http://localhost/rabbit/api/admin/rooms?userSession=${userSession}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -250,7 +250,7 @@ export const useChatStore = defineStore('chat', () => {
   // 채팅방 삭제 (관리자용)
   const deleteChatRoom = async (roomId, userSession) => {
     try {
-      const response = await fetch(`http://localhost/api/admin/rooms/${roomId}`, {
+      const response = await fetch(`http://localhost/rabbit/api/admin/rooms/${roomId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -276,7 +276,7 @@ export const useChatStore = defineStore('chat', () => {
   // 자동 정리 실행 (관리자용)
   const runCleanup = async (userSession) => {
     try {
-      const response = await fetch('http://localhost/api/admin/cleanup', {
+      const response = await fetch('http://localhost/rabbit/api/admin/cleanup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
